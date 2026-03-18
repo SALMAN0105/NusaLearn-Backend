@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="id" class="antialiased">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Materi Belajar - Admin</title>
+    <title>Materi Belajar - Command Center</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
@@ -14,247 +14,291 @@
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: { 
-                        sans: ['Outfit', 'sans-serif'],
-                        inter: ['Inter', 'sans-serif']
+                    fontFamily: {
+                        sans:  ['Outfit', 'sans-serif'],
+                        body:  ['Plus Jakarta Sans', 'sans-serif'],
                     },
                     colors: {
-                        emerald: { 50: '#ecfdf5', 100: '#d1fae5', 400: '#34d399', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' },
-                        neo: { 
-                            bg: '#F8F9FA', 
-                            lavender: '#E2D9F3', 
-                            green: '#A7F3D0', 
-                            cyan: '#A5F3FC', 
-                            red: '#FECDD3', 
-                            yellow: '#FDE047', 
-                            coral: '#FFB8A3', 
-                            pink: '#F9A8D4' 
-                        }
+                        /* STANDARDIZED COLOR REGISTRY */
+                        'p':         '#7C3AED',
+                        'p-mid':     '#8B5CF6',
+                        'p-lt':      '#EDE9FE',
+                        'p-dark':    '#4C1D95',
+                        'p-xlt':     '#F5F3FF',
+                        
+                        'neo-bg':    '#F5F3FF',
+                        'neo-green': '#A7F3D0',
+                        'neo-cyan':  '#A5F3FC',
+                        'neo-red':   '#FECDD3',
+                        'neo-yellow':'#FDE047',
+                        'neo-coral': '#FFB8A3',
+                        'neo-pink':  '#F9A8D4',
                     },
                     boxShadow: {
-                        'neo': '4px 4px 0px 0px rgba(0, 0, 0, 1)',
-                        'neo-sm': '2px 2px 0px 0px rgba(0, 0, 0, 1)',
-                        'neo-hover': '1px 1px 0px 0px rgba(0, 0, 0, 1)',
-                        'neo-lg': '6px 6px 0px 0px rgba(0, 0, 0, 1)',
+                        'neo':       '4px 4px 0px 0px rgba(0,0,0,1)',
+                        'neo-sm':    '2px 2px 0px 0px rgba(0,0,0,1)',
+                        'neo-lg':    '6px 6px 0px 0px rgba(0,0,0,1)',
+                        'neo-p':     '4px 4px 0px 0px #4C1D95',
+                        'neo-p-sm':  '2px 2px 0px 0px #4C1D95',
                     }
                 }
             }
         }
     </script>
+
     <style>
+        /* ── SYSTEM SCROLLBAR ── */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        /* --- PRELOADER ANIMATION --- */
+        body.modal-active { overflow: hidden !important; }
+
+        /* ── PRELOADER ── */
         #preloader {
-            position: fixed; inset: 0; background-color: #F8F9FA;
-            z-index: 9999; display: flex; justify-content: center; align-items: center;
-            transition: opacity 0.6s ease, visibility 0.6s ease;
+            position: fixed; inset: 0; background: #F5F3FF; z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
         }
-        html.dark #preloader { background-color: #0f172a; }
-
-        .diamond-loader { position: relative; width: 64px; height: 64px; animation: spin-container 2s infinite cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        .diamond { position: absolute; width: 24px; height: 24px; border-radius: 8px; border: 2px solid #000; transform: rotate(45deg); animation: assemble 2s infinite ease-in-out; }
-        .diamond:nth-child(1) { top: 4px; left: 4px; background: #E2D9F3; --tx: -20px; --ty: -20px; }
-        .diamond:nth-child(2) { top: 4px; right: 4px; background: #A7F3D0; --tx: 20px; --ty: -20px; }
-        .diamond:nth-child(3) { bottom: 4px; left: 4px; background: #FFB8A3; --tx: -20px; --ty: 20px; }
-        .diamond:nth-child(4) { bottom: 4px; right: 4px; background: #A5F3FC; --tx: 20px; --ty: 20px; }
-
-        @keyframes assemble {
-            0% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; }
-            40%, 60% { transform: translate(0, 0) rotate(45deg) scale(1); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; }
+        html.dark #preloader { background: #1e1b4b; }
+        .pre-logo { 
+            font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; 
+            color: #0A0A0A; letter-spacing: -1px; display: flex; align-items: center; gap: 6px; 
+            animation: pre-pulse 1.2s ease-in-out infinite; 
         }
-        @keyframes spin-container {
-            0%, 30% { transform: rotate(0deg); }
-            70%, 100% { transform: rotate(180deg); }
+        .pre-logo span { color: #7C3AED; }
+        html.dark .pre-logo { color: #fff; }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* ── NAVIGATION ACTIVE ── */
+        .nav-active {
+            background: #7C3AED !important; color: #fff !important;
+            border-color: #0A0A0A !important; box-shadow: 2px 2px 0 #0A0A0A;
+        }
+        .nav-active i { color: #fff !important; }
+
+        /* ── BACKGROUND PATTERN ── */
+        .dot-grid-bg {
+            background-image: radial-gradient(circle, #7C3AED18 1.5px, transparent 1.5px);
+            background-size: 24px 24px;
         }
 
-        .modal { transition: opacity 0.3s ease; }
-        body.modal-active { overflow-x: hidden; overflow-y: hidden !important; }
+        /* ── RENDER STAGGERING ── */
+        @keyframes fade-up {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in { animation: fade-up 0.4s ease-out both; }
+        .fade-in-1 { animation-delay: 0.05s; }
+        .fade-in-2 { animation-delay: 0.1s; }
     </style>
 </head>
-<body class="bg-neo-bg text-black font-sans antialiased selection:bg-neo-lavender selection:text-black dark:bg-slate-900 dark:text-gray-100 transition-colors duration-300">
+<body class="bg-p-xlt text-black font-sans selection:bg-p-lt selection:text-p-dark dark:bg-[#1e1b4b] dark:text-gray-100 transition-colors duration-300 relative">
 
     <div id="preloader">
-        <div class="diamond-loader">
-            <div class="diamond"></div><div class="diamond"></div><div class="diamond"></div><div class="diamond"></div>
-        </div>
+        <div class="pre-logo">Nusa<span>Learn</span> <i class="fa-solid fa-sparkles text-xl ml-1"></i></div>
     </div>
+
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden lg:hidden opacity-0 transition-opacity duration-300" onclick="toggleSidebar()"></div>
 
     <div class="flex h-screen overflow-hidden p-2 md:p-4 gap-4">
 
-        <aside id="sidebar" class="bg-white dark:bg-slate-800 w-64 md:w-[280px] flex-shrink-0 border-2 border-black rounded-2xl hidden md:flex flex-col transition-all duration-300 fixed md:relative z-40 h-full overflow-hidden shadow-neo">
-            <div class="h-24 flex items-center px-6 border-b-2 border-black bg-white dark:bg-slate-800">
-                <div class="flex items-center gap-4">
-                    <div class="bg-neo-lavender text-black p-3 rounded-xl border-2 border-black shadow-neo-sm font-bold flex items-center justify-center">
-                        <i class="fa-solid fa-layer-group text-lg"></i>
+        <aside id="sidebar"
+            class="bg-white dark:bg-[#2d2460] w-[260px] flex-shrink-0 border-2 border-black dark:border-p-dark rounded-2xl flex flex-col transition-transform duration-300 fixed md:relative z-40 h-[calc(100vh-1rem)] md:h-full overflow-hidden shadow-neo -translate-x-full md:translate-x-0">
+            
+            <div class="h-20 flex items-center px-6 border-b-2 border-black dark:border-p-dark bg-white dark:bg-[#2d2460]">
+                <div class="flex items-center gap-3">
+                    <div class="bg-p text-white w-10 h-10 rounded-xl border-2 border-black dark:border-p-dark shadow-neo-sm flex items-center justify-center text-lg flex-shrink-0">
+                        <i class="fa-solid fa-graduation-cap"></i>
                     </div>
-                    <span class="text-2xl font-extrabold tracking-tight text-black dark:text-white">NusaLearn</span>
+                    <span class="text-xl font-black tracking-tight text-black dark:text-white">
+                        Nusa<span class="text-p">Learn</span>
+                    </span>
                 </div>
+                <button onclick="toggleSidebar()" class="md:hidden ml-auto text-gray-500 hover:text-black dark:hover:text-white">
+                    <i class="fa-solid fa-xmark text-xl"></i>
+                </button>
             </div>
 
-            <div class="flex-1 overflow-y-auto py-6 px-5 space-y-1 bg-white dark:bg-slate-800">
-                <p class="px-3 text-sm font-bold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">General</p>
-                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-4 py-3.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-xl transition-all group font-semibold text-base">
-                    <i class="fa-solid fa-chart-pie w-6 text-center text-lg transition-colors"></i> <span>Dashboard</span>
+            <nav class="flex-1 overflow-y-auto no-scrollbar py-5 px-4 space-y-1 bg-white dark:bg-[#2d2460]">
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mb-2 uppercase tracking-widest">General</p>
+                <a href="{{ route('admin.dashboard') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-chart-pie w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Dashboard</span>
+                </a>
+
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
+                <a href="#" class="nav-active flex items-center gap-3 px-3 py-2.5 border-2 rounded-xl font-bold text-sm transition-all group">
+                    <i class="fa-solid fa-book-open w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Materi Belajar</span>
                 </a>
                 
-                <p class="px-3 text-sm font-bold text-gray-500 dark:text-gray-400 mt-8 mb-3 uppercase tracking-wider">Manajemen Konten</p>
-                <a href="#" class="flex items-center gap-3 px-4 py-3.5 bg-neo-lavender text-black border-2 border-black shadow-neo-sm font-bold rounded-xl transition-all text-base">
-                    <i class="fa-solid fa-book-open w-6 text-center text-lg"></i> <span>Materi Belajar</span>
+                <a href="{{ route('converter.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-file-export w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Kelola File</span>
                 </a>
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-4 py-3.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-xl transition-all group font-semibold text-base">
-                    <i class="fa-solid fa-clipboard-question w-6 text-center text-lg transition-colors"></i> <span>Bank Soal (Kuis)</span>
+                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Bank Soal</span>
                 </a>
 
-                <p class="px-3 text-sm font-bold text-gray-500 dark:text-gray-400 mt-8 mb-3 uppercase tracking-wider">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-4 py-3.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-xl transition-all group font-semibold text-base">
-                    <i class="fa-solid fa-language w-6 text-center text-lg transition-colors"></i> <span>Bahasa Daerah</span>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
+                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Bahasa Daerah</span>
                 </a>
-                <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-4 py-3.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-xl transition-all group font-semibold text-base">
-                    <i class="fa-solid fa-users w-6 text-center text-lg transition-colors"></i> <span>Data Siswa</span>
+                <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-users w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-4 py-3.5 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700 hover:text-black dark:hover:text-white border-2 border-transparent hover:border-black hover:shadow-neo-sm rounded-xl transition-all group font-semibold text-base">
-                    <i class="fa-solid fa-map-location-dot w-6 text-center text-lg transition-colors"></i> <span>Wilayah (Kode Pos)</span>
+                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
+                    <span>Wilayah</span>
                 </a>
-            </div>
+            </nav>
 
-            <div class="border-t-2 border-black p-6 bg-white dark:bg-slate-800">
-                <div class="flex items-center gap-4">
-                    <img src="https://ui-avatars.com/api/?name=Admin&background=E2D9F3&color=000&bold=true" alt="Admin" class="w-12 h-12 rounded-full border-2 border-black shadow-neo-sm">
+            <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
+                <div class="flex items-center gap-3">
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                         alt="Avatar Admin" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-base font-bold text-black dark:text-white truncate">Administrator</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400 font-medium truncate">Sistem Inti</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <div class="flex-1 flex flex-col h-full overflow-hidden relative bg-white dark:bg-slate-800 border-2 border-black rounded-2xl shadow-neo">
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative bg-white dark:bg-[#241f5c] border-2 border-black dark:border-p-dark rounded-2xl shadow-neo">
             
-            <header class="h-24 border-b-2 border-black flex items-center justify-between px-8 lg:px-12 z-20 sticky top-0 bg-white dark:bg-slate-800 rounded-t-2xl">
+            <header class="h-20 border-b-2 border-black dark:border-p-dark flex items-center justify-between px-6 lg:px-10 z-20 sticky top-0 bg-white dark:bg-[#241f5c] rounded-t-2xl">
                 <div class="flex items-center gap-4">
-                    <button onclick="toggleSidebar()" class="md:hidden w-12 h-12 flex items-center justify-center bg-neo-lavender border-2 border-black text-black rounded-xl shadow-neo-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all">
-                        <i class="fa-solid fa-bars text-xl"></i>
+                    <button onclick="toggleSidebar()" aria-label="Toggle Sidebar" class="md:hidden w-10 h-10 flex items-center justify-center bg-p-lt border-2 border-black text-p rounded-xl shadow-neo-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none transition-all">
+                        <i class="fa-solid fa-bars-staggered text-lg"></i>
                     </button>
-                    <div>
-                        <h1 class="text-3xl font-extrabold text-black dark:text-white tracking-tight hidden md:block">Materi Pembelajaran</h1>
+                    
+                    <div class="hidden md:block">
+                        <h1 class="text-xl font-black text-black dark:text-white tracking-tight">Materi Pembelajaran</h1>
+                        <p class="text-xs font-semibold text-gray-400 dark:text-purple-300/60 mt-1">Kelola index data dan konfigurasi modul belajar.</p>
                     </div>
                 </div>
                 
                 <div class="flex items-center gap-4">
                     @if(session('success'))
-                        <div class="bg-neo-green border-2 border-black text-black px-5 py-2.5 rounded-xl flex items-center gap-3 shadow-neo-sm text-base font-bold" role="alert">
-                            <i class="fa-solid fa-circle-check text-xl"></i>
-                            <span>{{ session('success') }}</span>
+                        <div class="hidden sm:flex bg-neo-green border-2 border-black text-black px-4 py-2 rounded-xl items-center gap-2 shadow-neo-sm text-sm font-bold fade-in" role="alert">
+                            <i class="fa-solid fa-circle-check"></i> <span>{{ session('success') }}</span>
                         </div>
                     @endif
                     @if($errors->any())
-                        <div class="bg-neo-red border-2 border-black text-black px-5 py-2.5 rounded-xl flex items-center gap-3 shadow-neo-sm text-base font-bold" role="alert">
-                            <i class="fa-solid fa-triangle-exclamation text-xl"></i>
-                            <span>{{ $errors->first() }}</span>
+                        <div class="hidden sm:flex bg-neo-red border-2 border-black text-black px-4 py-2 rounded-xl items-center gap-2 shadow-neo-sm text-sm font-bold fade-in" role="alert">
+                            <i class="fa-solid fa-triangle-exclamation"></i> <span>{{ $errors->first() }}</span>
                         </div>
                     @endif
                     
-                    <button id="theme-toggle" type="button" class="w-12 h-12 flex items-center justify-center bg-white border-2 border-black text-black rounded-xl shadow-neo-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all" aria-label="Toggle Dark Mode">
-                        <i id="theme-toggle-icon" class="fa-solid fa-moon text-xl"></i>
+                    <button id="theme-toggle" aria-label="Toggle Dark Mode" class="w-10 h-10 flex items-center justify-center bg-p-lt dark:bg-p-dark/40 border-2 border-black dark:border-p-dark text-p dark:text-purple-300 rounded-xl shadow-neo-sm hover:bg-p hover:text-white dark:hover:bg-p transition-all">
+                        <i id="theme-toggle-icon" class="fa-solid fa-moon text-base"></i>
                     </button>
                 </div>
             </header>
 
-            <main class="flex-1 overflow-x-hidden overflow-y-auto p-8 lg:p-12 bg-neo-bg dark:bg-slate-900 transition-colors duration-300">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto no-scrollbar p-6 lg:p-10 bg-p-xlt dark:bg-[#1e1b4b] dot-grid-bg transition-colors duration-300">
                 
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-5 bg-white dark:bg-slate-800 p-6 rounded-2xl shadow-neo border-2 border-black">
-                    <form action="" method="GET" class="flex flex-col sm:flex-row items-center gap-4 w-full lg:w-auto">
-                        <div class="relative w-full sm:w-72">
-                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-black dark:text-gray-300"><i class="fa-solid fa-magnifying-glass"></i></span>
-                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari judul materi..." class="w-full pl-12 pr-5 py-3.5 bg-gray-50 dark:bg-slate-700 border-2 border-black rounded-xl text-base font-bold text-black dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-600 transition-all shadow-neo-sm">
+                <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-5 bg-white dark:bg-[#2d2460] p-5 rounded-2xl shadow-neo border-2 border-black dark:border-p-dark fade-in fade-in-1">
+                    <form action="" method="GET" class="flex flex-col sm:flex-row items-center gap-4 w-full xl:w-auto">
+                        <div class="relative w-full sm:w-80">
+                            <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-gray-400 dark:text-purple-300/50"><i class="fa-solid fa-magnifying-glass"></i></span>
+                            <input type="text" name="search" value="{{ request('search') }}" placeholder="Query judul materi..." 
+                                   class="w-full pl-11 pr-4 py-3 bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                         </div>
-                        <select name="language_scope" onchange="this.form.submit()" class="w-full sm:w-auto border-2 border-black bg-gray-50 dark:bg-slate-700 dark:text-white rounded-xl py-3.5 px-5 text-base text-black font-bold focus:outline-none transition-all cursor-pointer shadow-neo-sm appearance-none">
-                            <option value="">Semua Bahasa</option>
-                            @foreach($languages as $lang) 
+                        <select name="language_scope" onchange="this.form.submit()" 
+                                class="w-full sm:w-auto border-2 border-black dark:border-p-dark bg-p-xlt dark:bg-[#1e1b4b] rounded-xl py-3 px-4 pr-10 text-sm text-black dark:text-white font-bold outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <option value="">Global Filter (Semua)</option>
+                            @foreach($languages ?? [] as $lang) 
                                 <option value="{{ $lang->code }}" {{ request('language_scope') == $lang->code ? 'selected' : '' }}>{{ $lang->name }}</option> 
                             @endforeach
                         </select>
                     </form>
                     
-                    <button onclick="toggleModal('modal-add')" class="w-full lg:w-auto bg-neo-yellow hover:bg-yellow-400 text-black px-6 py-3.5 rounded-xl border-2 border-black shadow-neo hover:-translate-y-1 hover:shadow-neo-lg transition-all text-base font-extrabold flex items-center justify-center gap-3">
-                        <i class="fa-solid fa-plus text-lg"></i> Tambah Materi
+                    <button onclick="toggleModal('modal-add')" class="w-full xl:w-auto bg-p text-white px-6 py-3 rounded-xl border-2 border-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-p-dark transition-all text-sm font-black flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-plus"></i> Inject Materi Baru
                     </button>
                 </div>
 
-                <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-neo border-2 border-black overflow-hidden flex flex-col">
-                    <div class="overflow-x-auto flex-1 font-inter">
-                        <table class="w-full text-left border-collapse">
+                <div class="bg-white dark:bg-[#2d2460] rounded-2xl shadow-neo border-2 border-black dark:border-p-dark overflow-hidden flex flex-col fade-in fade-in-2">
+                    <div class="overflow-x-auto flex-1 font-body">
+                        <table class="w-full text-left border-collapse whitespace-nowrap">
                             <thead>
-                                <tr class="bg-gray-50 dark:bg-slate-700 text-gray-800 dark:text-gray-200 text-sm border-b-2 border-black">
-                                    <th class="px-8 py-5 font-bold">Judul Materi (Indonesia)</th>
-                                    <th class="px-8 py-5 font-bold">Kategori</th>
-                                    <th class="px-8 py-5 font-bold">Scope Bahasa</th>
-                                    <th class="px-8 py-5 font-bold text-center">Level</th>
-                                    <th class="px-8 py-5 font-bold text-center">Status AI</th>
-                                    <th class="px-8 py-5 font-bold text-right">Aksi</th>
+                                <tr class="bg-p-xlt dark:bg-p-dark/40 border-b-2 border-black dark:border-p-dark">
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider">Materi Base (ID)</th>
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Kategori</th>
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Scope</th>
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Difficulty</th>
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Engine Status</th>
+                                    <th class="px-6 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-right">Mutate</th>
                                 </tr>
                             </thead>
-                            <tbody class="divide-y-2 divide-gray-100 dark:divide-slate-700 text-base font-medium">
-                                @forelse($materials as $item)
-                                <tr class="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors group">
-                                    <td class="px-8 py-5">
-                                        <div class="flex items-center gap-5">
-                                            @if($item->image_url)
-                                                <img src="{{ asset('storage/' . $item->image_url) }}" class="w-14 h-14 rounded-xl object-cover border-2 border-black shadow-neo-sm">
+                            <tbody class="divide-y-2 divide-p-lt dark:divide-p-dark/30 text-sm">
+                                @forelse($materials ?? [] as $item)
+                                <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center gap-4">
+                                            @if(isset($item->image_url) && $item->image_url)
+                                                <img src="{{ asset('storage/' . $item->image_url) }}" class="w-12 h-12 rounded-xl object-cover border-2 border-black shadow-neo-sm">
                                             @else
-                                                <div class="w-14 h-14 rounded-xl bg-neo-lavender border-2 border-black flex items-center justify-center text-black font-black text-2xl shadow-neo-sm">{{ substr($item->title_indo, 0, 1) }}</div>
+                                                <div class="w-12 h-12 rounded-xl bg-p border-2 border-black flex items-center justify-center text-white font-black text-xl shadow-neo-sm uppercase">
+                                                    {{ substr($item->title_indo ?? 'M', 0, 1) }}
+                                                </div>
                                             @endif
                                             <div>
-                                                <div class="font-extrabold text-black dark:text-white text-lg">{{ $item->title_indo }}</div>
-                                                <div class="text-sm font-bold text-gray-500 dark:text-gray-400 mt-0.5 font-mono">ID: {{ $item->id }}</div>
+                                                <div class="font-extrabold text-black dark:text-white text-base">{{ $item->title_indo ?? 'Untitled Block' }}</div>
+                                                <div class="text-[11px] font-bold text-gray-400 dark:text-purple-300/60 mt-0.5 font-mono uppercase">Pointer: #{{ $item->id ?? 'N/A' }}</div>
                                             </div>
                                         </div>
                                     </td>
-                                    <td class="px-8 py-5 capitalize">
-                                        <span class="px-4 py-1.5 rounded-lg text-sm font-bold bg-neo-lavender text-black border-2 border-black shadow-neo-sm">{{ $item->category }}</span>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="px-3 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-p-xlt dark:bg-[#1e1b4b] text-black dark:text-white border-2 border-black dark:border-p-dark shadow-neo-sm">
+                                            {{ $item->category ?? 'General' }}
+                                        </span>
                                     </td>
-                                    <td class="px-8 py-5">
-                                        <span class="text-sm font-bold text-black bg-white border-2 border-black px-3 py-1.5 rounded-lg shadow-neo-sm">{{ $item->language_code == 'global' ? 'Global' : $item->language_code }}</span>
+                                    <td class="px-6 py-4 text-center">
+                                        <span class="text-[11px] font-black tracking-wider uppercase text-black bg-neo-yellow border-2 border-black px-2.5 py-1 rounded-md shadow-neo-sm">
+                                            {{ ($item->language_code ?? 'global') == 'global' ? 'Global' : $item->language_code }}
+                                        </span>
                                     </td>
-                                    <td class="px-8 py-5 text-center">
-                                        <div class="flex justify-center text-yellow-400 text-sm gap-1 drop-shadow-md border-black">
+                                    <td class="px-6 py-4 text-center">
+                                        <div class="flex justify-center text-neo-yellow dark:text-yellow-400 text-sm gap-0.5 drop-shadow-sm">
                                             @for($i = 1; $i <= 3; $i++)
-                                                <i class="fa-{{ $i <= $item->level_difficulty ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
+                                                <i class="fa-{{ $i <= ($item->level_difficulty ?? 1) ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
                                             @endfor
                                         </div>
                                     </td>
                                     
-                                    <td class="px-8 py-5 text-center">
-                                        @if($item->ai_status == 'ready')
-                                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold bg-neo-green text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-check"></i> Ready</span>
-                                        @elseif($item->ai_status == 'processing')
-                                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold bg-neo-yellow text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-hourglass-half"></i> Processing</span>
-                                        @elseif($item->ai_status == 'failed')
-                                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold bg-neo-red text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-xmark"></i> Failed</span>
+                                    <td class="px-6 py-4 text-center">
+                                        @if(($item->ai_status ?? 'pending') == 'ready')
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-green text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-check"></i> Ready</span>
+                                        @elseif(($item->ai_status ?? 'pending') == 'processing')
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-yellow text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-gear fa-spin"></i> Processing</span>
+                                        @elseif(($item->ai_status ?? 'pending') == 'failed')
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-red text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-xmark"></i> Failed</span>
                                         @else
-                                            <span class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-sm font-bold bg-white text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-pause"></i> Pending</span>
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-white text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-pause"></i> Standby</span>
                                         @endif
                                     </td>
                                     
-                                    <td class="px-8 py-5 text-right">
-                                        <form action="{{ route('materials.destroy', $item->id) }}" method="POST" class="inline-block" onsubmit="return confirm('Apakah Anda yakin ingin menghapus materi ini?');">
+                                    <td class="px-6 py-4 text-right">
+                                        <form action="{{ route('materials.destroy', $item->id ?? 0) }}" method="POST" class="inline-block" onsubmit="return confirm('Peringatan: Penghapusan akan menghancurkan data relasional kuis. Lanjutkan?');">
                                             @csrf @method('DELETE')
-                                            <button type="submit" class="w-10 h-10 rounded-xl flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none">
-                                                <i class="fa-solid fa-trash-can text-base"></i>
+                                            <button type="submit" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none" title="Drop Material">
+                                                <i class="fa-solid fa-trash-can text-sm"></i>
                                             </button>
                                         </form>
                                     </td>
                                 </tr>
                                 @empty
                                 <tr>
-                                    <td colspan="6" class="px-8 py-16 text-center bg-white dark:bg-slate-800">
-                                        <div class="inline-flex items-center justify-center w-16 h-16 bg-gray-50 dark:bg-slate-700 border-2 border-dashed border-gray-400 dark:border-gray-500 rounded-full text-gray-400 dark:text-gray-500 mb-4">
+                                    <td colspan="6" class="px-6 py-16 text-center bg-white dark:bg-[#2d2460]">
+                                        <div class="inline-flex items-center justify-center w-16 h-16 bg-p-xlt dark:bg-p-dark/30 border-2 border-dashed border-p-mid rounded-2xl text-p-mid mb-4">
                                             <i class="fa-solid fa-folder-open text-2xl"></i>
                                         </div>
-                                        <p class="text-gray-500 dark:text-gray-400 font-bold text-base">Belum ada materi pembelajaran.</p>
+                                        <p class="text-gray-500 dark:text-purple-300/50 font-bold text-sm">Indeks materi kosong. Lakukan injeksi data.</p>
                                     </td>
                                 </tr>
                                 @endforelse
@@ -266,81 +310,89 @@
         </div>
     </div>
 
-    <div id="modal-add" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900/40 backdrop-blur-sm" onclick="toggleModal('modal-add')"></div>
+    <div id="modal-add" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-add')"></div>
         
-        <div class="modal-container bg-white dark:bg-slate-800 w-11/12 md:max-w-3xl mx-auto rounded-3xl border-2 border-black shadow-neo-lg z-50 overflow-y-auto max-h-[90vh] transform transition-all scale-95 opacity-0" id="modal-content">
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-3xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 overflow-y-auto max-h-[90vh] transform transition-all scale-95 opacity-0" id="modal-content">
             
-            <div class="modal-content pt-7 pb-5 px-8 border-b-2 border-black bg-neo-lavender dark:bg-slate-700 flex justify-between items-center sticky top-0 z-10">
-                <div>
-                    <h3 class="text-2xl font-extrabold text-black dark:text-white">Tambah Materi Baru</h3>
-                    <p class="text-sm font-bold text-gray-700 dark:text-gray-300 mt-1">Isi detail dan unggah dataset pembelajaran (JSON).</p>
+            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-p flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-cube text-p text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-white tracking-tight leading-none">Inject Materi Baru</h3>
+                        <p class="text-[11px] font-semibold text-white/70 mt-1">Isi parameter komputasi dan *upload payload* (JSON).</p>
+                    </div>
                 </div>
-                <div class="cursor-pointer z-50 w-10 h-10 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all" onclick="toggleModal('modal-add')">
-                    <i class="fa-solid fa-xmark text-lg"></i>
-                </div>
+                <button onclick="toggleModal('modal-add')" aria-label="Close Modal" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
             </div>
 
-            <div class="px-8 py-8 bg-white dark:bg-slate-800">
+            <div class="px-8 py-8 bg-white dark:bg-[#2d2460]">
                 <form action="{{ route('materials.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     
                     <div>
-                        <label class="block text-black dark:text-white text-base font-bold mb-3">Judul Materi (Bahasa Indonesia)</label>
-                        <input name="title_indo" class="w-full bg-gray-50 dark:bg-slate-900 border-2 border-black rounded-xl px-5 py-4 text-base font-bold dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-700 transition-all shadow-neo-sm" type="text" placeholder="Contoh: Mengenal Hewan" required>
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Identifier (Judul Materi)</label>
+                        <input name="title_indo" type="text" placeholder="Contoh: Logika Algoritma Dasar" required
+                               class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
-                            <label class="block text-black dark:text-white text-base font-bold mb-3">Kategori</label>
-                            <select name="category" class="w-full bg-gray-50 dark:bg-slate-900 border-2 border-black rounded-xl px-5 py-4 text-base font-bold dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-700 transition-all shadow-neo-sm cursor-pointer appearance-none">
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kategori Engine</label>
+                            <select name="category" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="literasi">Literasi</option>
                                 <option value="numerasi">Numerasi</option>
                                 <option value="budaya">Budaya</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-black dark:text-white text-base font-bold mb-3">Level</label>
-                            <select name="level_difficulty" class="w-full bg-gray-50 dark:bg-slate-900 border-2 border-black rounded-xl px-5 py-4 text-base font-bold dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-700 transition-all shadow-neo-sm cursor-pointer appearance-none">
-                                <option value="1">Level 1 (Mudah)</option>
-                                <option value="2">Level 2 (Sedang)</option>
-                                <option value="3">Level 3 (Sulit)</option>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Level Skalabilitas</label>
+                            <select name="level_difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="1">Lvl. 1 (Dasar)</option>
+                                <option value="2">Lvl. 2 (Menengah)</option>
+                                <option value="3">Lvl. 3 (Kompleks)</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-black dark:text-white text-base font-bold mb-3">Scope Bahasa</label>
-                            <select name="language_code" class="w-full bg-gray-50 dark:bg-slate-900 border-2 border-black rounded-xl px-5 py-4 text-base font-bold dark:text-white focus:outline-none focus:bg-white dark:focus:bg-slate-700 transition-all shadow-neo-sm cursor-pointer appearance-none">
-                                <option value="global">Global (Semua)</option>
-                                @foreach($languages as $lang) 
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Target Lingual</label>
+                            <select name="language_code" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="global">Global (Unbound)</option>
+                                @foreach($languages ?? [] as $lang) 
                                     <option value="{{ $lang->code }}">{{ $lang->name }}</option> 
                                 @endforeach
                             </select>
                         </div>
                     </div>
 
-                    <div class="pt-4">
-                        <label class="block text-black dark:text-white text-base font-bold mb-3">Upload File Materi (.json)</label>
-                        <div class="border-2 border-dashed border-black bg-neo-cyan/30 rounded-xl p-10 text-center hover:bg-neo-cyan/60 transition-colors relative group shadow-neo-sm">
-                            <div class="flex flex-col items-center">
-                                <div class="w-16 h-16 bg-white border-2 border-black text-black rounded-full flex items-center justify-center mb-4 group-hover:scale-110 group-hover:-translate-y-1 group-hover:shadow-neo transition-all">
-                                    <i class="fa-solid fa-file-code text-2xl"></i>
+                    <div class="pt-2">
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Upload Data Payload (.json)</label>
+                        <div class="border-2 border-dashed border-black dark:border-p-dark bg-neo-cyan/20 dark:bg-p-dark/20 rounded-xl p-8 text-center hover:bg-neo-cyan/40 dark:hover:bg-p-dark/40 transition-colors relative group">
+                            <div class="flex flex-col items-center pointer-events-none">
+                                <div class="w-14 h-14 bg-white border-2 border-black text-black rounded-full flex items-center justify-center mb-3 group-hover:-translate-y-1 transition-transform shadow-neo-sm">
+                                    <i class="fa-solid fa-code text-xl"></i>
                                 </div>
-                                <span class="text-lg font-extrabold text-black dark:text-white mb-1">Klik untuk upload file JSON</span>
-                                <span class="text-sm font-bold text-gray-600 dark:text-gray-300">Format: .json (Maks 2MB)</span>
+                                <span class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Pilih File JSON</span>
+                                <span class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Max Size: 2048 KB</span>
                             </div>
                             <input type="file" name="json_file" accept=".json" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" required>
                         </div>
-                        <p class="text-sm font-bold text-gray-500 dark:text-gray-400 mt-3 flex items-center gap-2"><i class="fa-solid fa-circle-info"></i> File JSON akan di-parse otomatis oleh sistem AI.</p>
+                        <p class="text-[11px] font-bold text-gray-500 dark:text-purple-300/50 mt-2 flex items-center gap-1.5"><i class="fa-solid fa-robot text-p-mid"></i> File divalidasi dan di-parsing oleh Engine secara otomatis.</p>
                     </div>
 
-                    <div class="pt-4">
-                        <label class="block text-black dark:text-white text-base font-bold mb-3">Gambar Cover (Opsional)</label>
-                        <input type="file" name="image" accept="image/*" class="block w-full text-base font-bold text-gray-500 dark:text-gray-400 file:mr-4 file:py-3 file:px-5 file:rounded-xl file:border-2 file:border-black file:text-base file:font-bold file:bg-white file:text-black hover:file:bg-gray-100 transition-all border-2 border-black rounded-xl cursor-pointer bg-gray-50 dark:bg-slate-900 shadow-neo-sm">
+                    <div class="pt-2">
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Aset Visual (Thumbnail)</label>
+                        <input type="file" name="image" accept="image/*" 
+                               class="block w-full text-xs font-bold text-gray-500 dark:text-purple-300/70 
+                               file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-2 file:border-black file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-white file:text-black hover:file:bg-gray-100 file:transition-all file:cursor-pointer cursor-pointer border-2 border-black dark:border-p-dark rounded-xl bg-p-xlt dark:bg-[#1e1b4b] outline-none">
                     </div>
 
-                    <div class="flex justify-end gap-4 pt-8 border-t-2 border-black dark:border-gray-700 mt-8">
-                        <button type="button" onclick="toggleModal('modal-add')" class="px-6 py-3.5 bg-white border-2 border-black text-black rounded-xl text-base font-extrabold shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all">Batal</button>
-                        <button type="submit" class="px-6 py-3.5 bg-neo-yellow border-2 border-black text-black rounded-xl text-base font-extrabold shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all">Simpan Materi</button>
+                    <div class="flex justify-end gap-3 pt-6 border-t-2 border-p-lt dark:border-p-dark mt-6">
+                        <button type="button" onclick="toggleModal('modal-add')" class="px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-black dark:text-white text-sm font-black shadow-neo-sm hover:-translate-y-0.5 hover:shadow-neo transition-all">Abort</button>
+                        <button type="submit" class="px-5 py-2.5 bg-p border-2 border-black text-white rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-p-dark transition-all">Compile & Upload <i class="fa-solid fa-upload ml-1"></i></button>
                     </div>
                 </form>
             </div>
@@ -348,26 +400,32 @@
     </div>
 
     <script>
-        // Transisi Preloader
-        window.addEventListener('load', function() {
-            const preloader = document.getElementById('preloader');
-            preloader.style.opacity = '0';
-            setTimeout(() => {
-                preloader.style.visibility = 'hidden';
-            }, 600);
+        // Preloader Logic O(1)
+        window.addEventListener('load', () => {
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 500);
         });
 
-        // Toggle Sidebar O(1)
+        // Sidebar Execution Logic (Optimized for Mobile)
         function toggleSidebar() { 
             const sidebar = document.getElementById('sidebar');
-            sidebar.classList.toggle('hidden');
-            sidebar.classList.toggle('absolute'); 
-            sidebar.classList.toggle('h-full');
-            sidebar.classList.toggle('w-[280px]');
-            sidebar.classList.toggle('z-50');
+            const overlay = document.getElementById('sidebar-overlay');
+            
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            
+            if (isClosed) {
+                sidebar.classList.remove('-translate-x-full');
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('opacity-0');
+                setTimeout(() => overlay.classList.add('hidden'), 300);
+            }
         }
 
-        // Toggle Modal O(1)
+        // Modal Execution Logic (State Machine)
         function toggleModal(modalID) {
             const modal = document.getElementById(modalID);
             const content = modal.querySelector('.modal-container');
@@ -375,6 +433,7 @@
             
             if (modal.classList.contains('opacity-0')) {
                 modal.classList.remove('opacity-0', 'pointer-events-none');
+                modal.setAttribute('aria-hidden', 'false');
                 body.classList.add('modal-active');
                 setTimeout(() => { 
                     content.classList.remove('scale-95', 'opacity-0'); 
@@ -385,33 +444,29 @@
                 content.classList.add('scale-95', 'opacity-0');
                 setTimeout(() => { 
                     modal.classList.add('opacity-0', 'pointer-events-none'); 
+                    modal.setAttribute('aria-hidden', 'true');
                     body.classList.remove('modal-active'); 
                 }, 300);
             }
         }
 
-        // Dark Mode Logic
+        // System Environment (Dark Mode) Compiler
         const themeToggleBtn = document.getElementById('theme-toggle');
         const themeToggleIcon = document.getElementById('theme-toggle-icon');
 
         if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
             document.documentElement.classList.add('dark');
             themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
-            themeToggleBtn.classList.replace('bg-white', 'bg-neo-lavender');
-        } else {
-            document.documentElement.classList.remove('dark');
         }
 
-        themeToggleBtn.addEventListener('click', function() {
+        themeToggleBtn.addEventListener('click', () => {
             const isDark = document.documentElement.classList.toggle('dark');
             if (isDark) {
                 localStorage.theme = 'dark';
                 themeToggleIcon.classList.replace('fa-moon', 'fa-sun');
-                themeToggleBtn.classList.replace('bg-white', 'bg-neo-lavender');
             } else {
                 localStorage.theme = 'light';
                 themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
-                themeToggleBtn.classList.replace('bg-neo-lavender', 'bg-white');
             }
         });
     </script>

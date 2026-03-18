@@ -3,164 +3,268 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pemulihan Akses - Tolaki Learning</title>
-    
+    <title>Pemulihan Akses - NusaLearn</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: { emerald: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b' } },
-                    animation: { 'blob': 'blob 10s infinite', 'fade-in-up': 'fadeInUp 0.6s ease-out forwards' },
-                    keyframes: {
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
-                        },
-                        fadeInUp: { '0%': { opacity: '0', transform: 'translateY(20px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        #preloader { position: fixed; inset: 0; background-color: #ffffff; z-index: 9999; display: flex; justify-content: center; align-items: center; transition: opacity 0.6s ease, visibility 0.6s ease; }
-        .diamond-loader { position: relative; width: 64px; height: 64px; animation: spin-container 2s infinite cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        .diamond { position: absolute; width: 24px; height: 24px; border-radius: 4px; transform: rotate(45deg); animation: assemble 2s infinite ease-in-out; }
-        .diamond:nth-child(1) { top: 4px; left: 4px; background: linear-gradient(135deg, #10b981, #059669); --tx: -20px; --ty: -20px; }
-        .diamond:nth-child(2) { top: 4px; right: 4px; background: linear-gradient(135deg, #059669, #047857); --tx: 20px; --ty: -20px; }
-        .diamond:nth-child(3) { bottom: 4px; left: 4px; background: linear-gradient(135deg, #34d399, #10b981); --tx: -20px; --ty: 20px; }
-        .diamond:nth-child(4) { bottom: 4px; right: 4px; background: linear-gradient(135deg, #047857, #065f46); --tx: 20px; --ty: 20px; }
-        @keyframes assemble { 0% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; } 40%, 60% { transform: translate(0, 0) rotate(45deg) scale(1); opacity: 1; } 100% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; } }
-        @keyframes spin-container { 0%, 30% { transform: rotate(0deg); } 70%, 100% { transform: rotate(180deg); } }
-        .animation-delay-2000 { animation-delay: 2s; } .animation-delay-4000 { animation-delay: 4s; }
+        :root {
+            --purple:     #7C3AED;
+            --purple-mid: #8B5CF6;
+            --purple-lt:  #EDE9FE;
+            --purple-dark:#4C1D95;
+            --black:      #0A0A0A;
+            --white:      #FFFFFF;
+            --gray-soft:  #F5F3FF;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            background: var(--white);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 24px 0;
+        }
+
+        /* PRELOADER */
+        #preloader { position: fixed; inset: 0; background: var(--white); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .6s ease, visibility .6s ease; }
+        .pre-logo { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--black); letter-spacing: -2px; display: flex; align-items: center; gap: 6px; animation: pre-pulse 1.2s ease-in-out infinite; }
+        .pre-logo span { color: var(--purple); }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* BG SCENE */
+        .bg-scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .blob-tl { position: absolute; top: -120px; left: -100px; width: 520px; height: 520px; background: var(--purple); border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; opacity: .10; animation: morph-a 12s ease-in-out infinite; }
+        .blob-br { position: absolute; bottom: -100px; right: -80px; width: 440px; height: 440px; background: var(--purple-mid); border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%; opacity: .08; animation: morph-b 14s ease-in-out infinite; }
+        .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px); background-size: 28px 28px; }
+        .deco-ring { position: absolute; bottom: 80px; left: 60px; width: 100px; height: 100px; border: 12px solid var(--purple); border-radius: 50%; opacity: .15; animation: spin-slow 20s linear infinite; }
+        .deco-chunky { position: absolute; top: 8%; right: 7%; width: 70px; height: 70px; background: var(--purple-lt); border: 3px solid var(--black); border-radius: 18px; box-shadow: 5px 5px 0 var(--black); transform: rotate(18deg); animation: float-y 6s ease-in-out infinite 1s; }
+        .deco-star { position: absolute; bottom: 25%; left: 10%; font-size: 44px; line-height: 1; animation: spin-slow 15s linear infinite reverse; opacity: .25; color: var(--purple); }
+
+        /* Step badge melayang */
+        .float-step { position: absolute; top: 18%; left: 6%; background: var(--white); border: 2.5px solid var(--black); border-radius: 16px; box-shadow: 4px 4px 0 var(--black); padding: 10px 18px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px; color: var(--black); display: flex; align-items: center; gap: 8px; animation: float-y 4s ease-in-out infinite; white-space: nowrap; }
+        .float-step i { color: var(--purple); font-size: 14px; }
+
+        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
+        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
+        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes slide-up { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+
+        /* WRAP */
+        .recovery-wrap { position: relative; z-index: 10; width: 100%; max-width: 460px; padding: 0 20px; }
+
+        /* BRAND */
+        .brand { text-align: center; margin-bottom: 28px; animation: slide-up .5s ease both; }
+        .brand-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: var(--purple); border: 3px solid var(--black); border-radius: 20px; box-shadow: 5px 5px 0 var(--black); margin-bottom: 14px; font-size: 26px; color: var(--white); transform: rotate(-6deg); transition: transform .3s; }
+        .brand-icon:hover { transform: rotate(0deg); }
+        .brand h1 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; letter-spacing: -2px; color: var(--black); margin: 0 0 6px; line-height: 1; }
+        .brand h1 span { color: var(--purple); }
+        .brand p { font-size: 13px; font-weight: 600; color: #6B7280; margin: 0; }
+
+        /* CARD */
+        .card { background: var(--white); border: 2.5px solid var(--black); border-radius: 28px; box-shadow: 8px 8px 0 var(--black); padding: 36px 36px 32px; animation: slide-up .55s ease .08s both; }
+        @media (max-width: 480px) { .card { padding: 24px 20px; } }
+
+        /* STEP INDICATOR */
+        .step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+        .step-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .step-dot { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--black); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 13px; background: var(--white); color: #9CA3AF; box-shadow: 2px 2px 0 var(--black); transition: all .3s; }
+        .step-dot.active { background: var(--purple); color: var(--white); border-color: var(--purple); box-shadow: 3px 3px 0 var(--black); }
+        .step-dot.done { background: #22C55E; color: var(--white); border-color: #16A34A; }
+        .step-label { font-size: 10px; font-weight: 700; color: #9CA3AF; margin-top: 4px; text-align: center; }
+        .step-label.active { color: var(--purple); }
+        .step-line { flex: 1; height: 2.5px; background: #E5E7EB; margin: 0 4px; margin-bottom: 18px; border-radius: 99px; transition: background .3s; }
+        .step-line.done { background: var(--purple); }
+
+        /* SECTION HEADING */
+        .section-head { margin-bottom: 20px; }
+        .section-head h2 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 1.4rem; letter-spacing: -0.5px; color: var(--black); margin: 0 0 4px; }
+        .section-head p { font-size: 13px; font-weight: 500; color: #9CA3AF; margin: 0; }
+
+        /* ALERT */
+        .alert { padding: 12px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; border: 2px solid; }
+        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
+        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
+
+        /* LABEL & INPUT */
+        .field-label { display: block; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 8px; }
+        .input-wrap { position: relative; margin-bottom: 18px; }
+        .input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; font-size: 15px; transition: color .2s; pointer-events: none; }
+        .input-wrap:focus-within .input-icon { color: var(--purple); }
+        .field-input { width: 100%; background: var(--gray-soft); border: 2px solid #E5E7EB; border-radius: 14px; padding: 14px 16px 14px 44px; font-size: 14px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--black); transition: border-color .2s, box-shadow .2s, background .2s; outline: none; }
+        .field-input::placeholder { color: #C4B5FD; }
+        .field-input:focus { border-color: var(--purple); background: var(--white); box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple); }
+        .toggle-pw { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A78BFA; font-size: 14px; transition: color .2s; padding: 4px; }
+        .toggle-pw:hover { color: var(--purple); }
+
+        /* OTP INPUT */
+        .otp-input { width: 100%; background: var(--gray-soft); border: 2.5px solid var(--black); border-radius: 14px; padding: 18px 16px; font-size: 2rem; font-weight: 900; font-family: 'Outfit', monospace; letter-spacing: .6em; text-align: center; color: var(--purple); outline: none; box-shadow: 3px 3px 0 var(--black); transition: box-shadow .2s, border-color .2s; }
+        .otp-input:focus { border-color: var(--purple); box-shadow: 5px 5px 0 var(--black); }
+        .otp-input::placeholder { color: #DDD6FE; letter-spacing: .5em; }
+
+        /* OTP ICON BOX */
+        .otp-icon { width: 72px; height: 72px; background: var(--purple-lt); border: 2.5px solid var(--black); border-radius: 20px; box-shadow: 4px 4px 0 var(--black); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; color: var(--purple); }
+
+        /* WARNING BOX */
+        .warn-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #92400E; margin-bottom: 20px; }
+
+        /* BTN */
+        .btn-submit { width: 100%; background: var(--purple); color: var(--white); border: 2.5px solid var(--black); border-radius: 14px; padding: 15px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 4px 4px 0 var(--black); transition: transform .15s, box-shadow .15s, background .15s; outline: none; }
+        .btn-submit:hover { background: var(--purple-dark); transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--black); }
+        .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--black); }
+
+        /* BACK LINK */
+        .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #6B7280; text-decoration: none; padding: 8px 16px; border: 2px solid #E5E7EB; border-radius: 99px; transition: all .2s; margin-top: 20px; }
+        .back-link:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-lt); }
+
+        /* FOOTER */
+        .footer { text-align: center; margin-top: 24px; font-size: 12px; font-weight: 500; color: #9CA3AF; animation: slide-up .6s ease .18s both; }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex flex-col items-center justify-center relative overflow-x-hidden font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900 py-6 sm:py-12">
+<body>
 
     <div id="preloader">
-        <div class="diamond-loader"><div class="diamond"></div><div class="diamond"></div><div class="diamond"></div><div class="diamond"></div></div>
+        <div class="pre-logo">Nusa<span>Learn</span> <span style="font-size:1.6rem;margin-left:4px">✦</span></div>
     </div>
 
-    <div class="absolute inset-0 w-full h-full overflow-hidden z-0 pointer-events-none fixed">
-        <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        <div class="absolute top-0 -left-4 w-72 h-72 sm:w-96 sm:h-96 bg-emerald-300 rounded-full mix-blend-multiply filter blur-[80px] sm:blur-3xl opacity-30 animate-blob"></div>
-        <div class="absolute top-0 -right-4 w-72 h-72 sm:w-96 sm:h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-[80px] sm:blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div class="absolute -bottom-8 left-10 sm:left-20 w-72 h-72 sm:w-96 sm:h-96 bg-green-300 rounded-full mix-blend-multiply filter blur-[80px] sm:blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    <div class="bg-scene">
+        <div class="dot-grid"></div>
+        <div class="blob-tl"></div>
+        <div class="blob-br"></div>
+        <div class="deco-ring"></div>
+        <div class="deco-chunky"></div>
+        <div class="deco-star">✦</div>
+        <div class="float-step">
+            <i class="fa-solid fa-shield-halved"></i> Pemulihan Aman
+        </div>
     </div>
 
-    <div class="w-full max-w-md relative z-10 px-4 flex flex-col items-center my-auto">
-        
-        <div class="text-center mb-5 sm:mb-6 animate-fade-in-up">
-            <div class="w-14 h-14 sm:w-16 sm:h-16 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl shadow-lg flex items-center justify-center mb-3 transform rotate-12 transition-transform">
-                <i class="fa-solid fa-shield-halved text-white text-2xl sm:text-3xl -rotate-12"></i>
-            </div>
-            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-800 tracking-tight">Pemulihan <span class="text-emerald-600">Akses</span></h1>
+    <div class="recovery-wrap">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h1>Nusa<span>Learn</span></h1>
+            <p>Pemulihan Akses Administrator</p>
         </div>
 
-        <div class="w-full bg-white/85 backdrop-blur-xl rounded-2xl sm:rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 p-6 sm:p-8 animate-fade-in-up" style="animation-delay: 0.1s;">
-            
-            @if (session('success'))
-                <div class="mb-5 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm text-sm font-medium">
-                    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-                </div>
-            @endif
+        <div class="card">
 
-            @if ($errors->any())
-                <div class="mb-5 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl flex items-start gap-3 shadow-sm text-sm font-medium">
-                    <i class="fa-solid fa-circle-exclamation mt-0.5"></i> <span>{{ $errors->first() }}</span>
-                </div>
-            @endif
-
-            @if($step === 'request_email')
-            <form method="POST" action="{{ route('password.sendOtp') }}" class="space-y-5">
-                @csrf
-                <p class="text-sm text-slate-500 text-center mb-2">Masukkan alamat email yang terdaftar. Kami akan mengirimkan kode verifikasi (OTP).</p>
-                <div>
-                    <label class="block text-slate-700 text-[13px] font-bold mb-2 ml-1">Alamat Email Valid</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors"><i class="fa-solid fa-envelope"></i></div>
-                        <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 pl-11 pr-4 text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500" type="email" name="email" required autofocus placeholder="admin@sekolah.sch.id">
+            {{-- Step Indicator --}}
+            <div class="step-bar">
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'request_email' ? 'active' : 'done' }}">
+                        {{ $step === 'request_email' ? '1' : '✓' }}
                     </div>
+                    <div class="step-label {{ $step === 'request_email' ? 'active' : '' }}">Email</div>
                 </div>
-                <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all flex justify-center items-center gap-2" type="submit">
-                    Kirim Kode OTP <i class="fa-solid fa-paper-plane"></i>
+                <div class="step-line {{ in_array($step, ['verify_otp','reset_password']) ? 'done' : '' }}"></div>
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'verify_otp' ? 'active' : ($step === 'reset_password' ? 'done' : '') }}">
+                        {{ $step === 'reset_password' ? '✓' : '2' }}
+                    </div>
+                    <div class="step-label {{ $step === 'verify_otp' ? 'active' : '' }}">Kode OTP</div>
+                </div>
+                <div class="step-line {{ $step === 'reset_password' ? 'done' : '' }}"></div>
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'reset_password' ? 'active' : '' }}">3</div>
+                    <div class="step-label {{ $step === 'reset_password' ? 'active' : '' }}">Password Baru</div>
+                </div>
+            </div>
+
+            @if (session('success'))
+            <div class="alert alert-success"><i class="fa-solid fa-circle-check" style="margin-top:1px"></i><span>{{ session('success') }}</span></div>
+            @endif
+            @if ($errors->any())
+            <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i><span>{{ $errors->first() }}</span></div>
+            @endif
+
+            {{-- STEP 1: Request Email --}}
+            @if($step === 'request_email')
+            <div class="section-head">
+                <h2>Masukkan Email Anda</h2>
+                <p>Kami akan mengirimkan kode verifikasi 6 digit ke email terdaftar.</p>
+            </div>
+            <form method="POST" action="{{ route('password.sendOtp') }}">
+                @csrf
+                <label class="field-label">Alamat Email Valid</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-envelope input-icon"></i>
+                    <input class="field-input" type="email" name="email" required autofocus placeholder="admin@sekolah.sch.id">
+                </div>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP
                 </button>
             </form>
 
+            {{-- STEP 2: Verify OTP --}}
             @elseif($step === 'verify_otp')
-            <form method="POST" action="{{ route('password.verifyOtp') }}" class="space-y-5 text-center">
+            <div class="otp-icon"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <div class="section-head" style="text-align:center">
+                <h2>Cek Email Anda</h2>
+                <p>Kode OTP 6 digit dikirim ke <strong style="color:var(--purple)">{{ session('reset_email') }}</strong></p>
+            </div>
+            <form method="POST" action="{{ route('password.verifyOtp') }}">
                 @csrf
-                <div class="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-2 text-2xl"><i class="fa-solid fa-envelope-open-text"></i></div>
-                <h3 class="font-bold text-slate-800">Cek Email Anda</h3>
-                <p class="text-xs text-slate-500 px-4">Kami telah mengirimkan 6 digit kode OTP ke <strong>{{ session('reset_email') }}</strong></p>
-                
-                <div>
-                    <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-4 text-center text-2xl tracking-[0.5em] font-mono font-bold text-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 shadow-inner" type="text" name="otp" required maxlength="6" autofocus placeholder="------" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                <div style="margin-bottom:20px">
+                    <input class="otp-input" type="text" name="otp" required maxlength="6" autofocus placeholder="——————" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
                 </div>
-                
-                <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all mt-2" type="submit">Verifikasi Kode</button>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-check-double"></i> Verifikasi Kode
+                </button>
             </form>
 
+            {{-- STEP 3: Reset Password --}}
             @elseif($step === 'reset_password')
-            <form method="POST" action="{{ route('password.resetPassword') }}" class="space-y-5">
+            <div class="section-head">
+                <h2>Buat Password Baru</h2>
+                <p>Buat password yang kuat untuk akun Anda.</p>
+            </div>
+            <div class="warn-box">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Minimal 8 karakter, mengandung huruf besar, kecil, angka & simbol.
+            </div>
+            <form method="POST" action="{{ route('password.resetPassword') }}">
                 @csrf
-                <p class="text-[11px] text-amber-600 bg-amber-50 px-3 py-2 rounded-lg font-medium border border-amber-100"><i class="fa-solid fa-shield-cat"></i> Buat password baru minimal 8 karakter, mencakup huruf besar, kecil, angka, dan simbol.</p>
-                
-                <div>
-                    <label class="block text-slate-700 text-[13px] font-bold mb-2 ml-1">Password Baru</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors"><i class="fa-solid fa-key text-sm"></i></div>
-                        <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 pl-11 pr-12 text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" id="password" type="password" name="password" required placeholder="••••••••">
-                        <button type="button" onclick="togglePassword('password', 'eye-pass')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600"><i id="eye-pass" class="fa-regular fa-eye"></i></button>
-                    </div>
+                <label class="field-label">Password Baru</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-key input-icon"></i>
+                    <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
                 </div>
-
-                <div>
-                    <label class="block text-slate-700 text-[13px] font-bold mb-2 ml-1">Konfirmasi Password Baru</label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors"><i class="fa-solid fa-lock text-sm"></i></div>
-                        <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-3 pl-11 pr-12 text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••">
-                        <button type="button" onclick="togglePassword('password_confirmation', 'eye-conf')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600"><i id="eye-conf" class="fa-regular fa-eye"></i></button>
-                    </div>
+                <label class="field-label">Konfirmasi Password Baru</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
                 </div>
-
-                <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md transition-all mt-4" type="submit">Update Password & Login</button>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-rotate-right"></i> Update Password & Login
+                </button>
             </form>
             @endif
 
-            <div class="text-center mt-6">
-                <a href="{{ route('login') }}" class="text-[13px] text-slate-500 hover:text-slate-800 font-bold transition-colors inline-flex items-center gap-1.5">
-                    <i class="fa-solid fa-arrow-left"></i> Kembali ke Halaman Login
+            <div style="text-align:center">
+                <a href="{{ route('login') }}" class="back-link">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali ke Login
                 </a>
             </div>
         </div>
+
+        <div class="footer">&copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.</div>
     </div>
 
     <script>
         function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
-            if (input.type === "password") {
-                input.type = "text";
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
-            } else {
-                input.type = "password";
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
-            }
+            const icon  = document.getElementById(iconId);
+            if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
+            else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
         }
         window.addEventListener('load', function() {
-            const preloader = document.getElementById('preloader');
-            preloader.style.opacity = '0';
-            setTimeout(() => { preloader.style.visibility = 'hidden'; }, 600);
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
         });
     </script>
 </body>

@@ -3,200 +3,579 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - Tolaki Learning</title>
+    <title>Login Administrator - NusaLearn</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        emerald: {
-                            50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 
-                            600: '#059669', 700: '#047857', 800: '#065f46', 900: '#064e3b',
-                        }
-                    },
-                    animation: {
-                        'blob': 'blob 10s infinite',
-                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
-                    },
-                    keyframes: {
-                        blob: {
-                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
-                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
-                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
-                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
-                        },
-                        fadeInUp: {
-                            '0%': { opacity: '0', transform: 'translateY(20px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        /* Animasi Preloader Sinkron Global */
-        #preloader {
-            position: fixed; inset: 0; background-color: #ffffff;
-            z-index: 9999; display: flex; justify-content: center; align-items: center;
-            transition: opacity 0.6s ease, visibility 0.6s ease;
+        :root {
+            --purple:     #7C3AED;
+            --purple-mid: #8B5CF6;
+            --purple-lt:  #EDE9FE;
+            --purple-dark:#4C1D95;
+            --black:      #0A0A0A;
+            --white:      #FFFFFF;
+            --gray-soft:  #F5F3FF;
         }
-        .diamond-loader { position: relative; width: 64px; height: 64px; animation: spin-container 2s infinite cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        .diamond { position: absolute; width: 24px; height: 24px; border-radius: 4px; transform: rotate(45deg); animation: assemble 2s infinite ease-in-out; }
-        .diamond:nth-child(1) { top: 4px; left: 4px; background: linear-gradient(135deg, #10b981, #059669); --tx: -20px; --ty: -20px; }
-        .diamond:nth-child(2) { top: 4px; right: 4px; background: linear-gradient(135deg, #059669, #047857); --tx: 20px; --ty: -20px; }
-        .diamond:nth-child(3) { bottom: 4px; left: 4px; background: linear-gradient(135deg, #34d399, #10b981); --tx: -20px; --ty: 20px; }
-        .diamond:nth-child(4) { bottom: 4px; right: 4px; background: linear-gradient(135deg, #047857, #065f46); --tx: 20px; --ty: 20px; }
 
-        @keyframes assemble {
-            0% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; }
-            40%, 60% { transform: translate(0, 0) rotate(45deg) scale(1); opacity: 1; }
-            100% { transform: translate(var(--tx), var(--ty)) rotate(45deg) scale(0); opacity: 0; }
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--white);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
         }
-        @keyframes spin-container { 0%, 30% { transform: rotate(0deg); } 70%, 100% { transform: rotate(180deg); } }
-        
-        /* Delay utility untuk animasi */
-        .animation-delay-2000 { animation-delay: 2s; }
-        .animation-delay-4000 { animation-delay: 4s; }
+
+        /* ── PRELOADER ── */
+        #preloader {
+            position: fixed; inset: 0;
+            background: var(--white);
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity .6s ease, visibility .6s ease;
+        }
+        .pre-logo {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 2.5rem;
+            color: var(--black);
+            letter-spacing: -2px;
+            display: flex; align-items: center; gap: 6px;
+            animation: pre-pulse 1.2s ease-in-out infinite;
+        }
+        .pre-logo span { color: var(--purple); }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* ── DECORATIVE BG BLOBS ── */
+        .bg-scene {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Blob ungu besar kiri atas */
+        .blob-tl {
+            position: absolute;
+            top: -120px; left: -100px;
+            width: 520px; height: 520px;
+            background: var(--purple);
+            border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
+            opacity: .12;
+            animation: morph-a 12s ease-in-out infinite;
+        }
+        /* Blob ungu kanan bawah */
+        .blob-br {
+            position: absolute;
+            bottom: -100px; right: -80px;
+            width: 440px; height: 440px;
+            background: var(--purple-mid);
+            border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%;
+            opacity: .1;
+            animation: morph-b 14s ease-in-out infinite;
+        }
+        /* Cincin dekoratif kiri bawah */
+        .deco-ring {
+            position: absolute;
+            bottom: 80px; left: 60px;
+            width: 120px; height: 120px;
+            border: 14px solid var(--purple);
+            border-radius: 50%;
+            opacity: .18;
+            animation: spin-slow 20s linear infinite;
+        }
+        /* Squiggle / lengkungan kanan atas */
+        .deco-arc {
+            position: absolute;
+            top: 60px; right: 120px;
+            width: 90px; height: 90px;
+            border: 12px solid var(--purple);
+            border-radius: 50%;
+            clip-path: inset(0 0 50% 0);
+            opacity: .22;
+            transform: rotate(-30deg);
+        }
+        /* Titik-titik grid halus */
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        /* Badge melayang kiri */
+        .float-badge {
+            position: absolute;
+            top: 22%; left: 6%;
+            background: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 16px;
+            box-shadow: 4px 4px 0 var(--black);
+            padding: 12px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--black);
+            display: flex; align-items: center; gap: 10px;
+            animation: float-y 4s ease-in-out infinite;
+            white-space: nowrap;
+        }
+        .float-badge .dot { width: 10px; height: 10px; background: #22C55E; border-radius: 50%; border: 2px solid var(--black); }
+        /* Badge kanan bawah */
+        .float-badge-2 {
+            position: absolute;
+            bottom: 20%; right: 6%;
+            background: var(--purple);
+            border: 2.5px solid var(--black);
+            border-radius: 16px;
+            box-shadow: 4px 4px 0 var(--black);
+            padding: 12px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--white);
+            display: flex; align-items: center; gap: 8px;
+            animation: float-y 5s ease-in-out infinite .8s;
+            white-space: nowrap;
+        }
+        /* Chunky shape kanan atas */
+        .deco-chunky {
+            position: absolute;
+            top: 10%; right: 8%;
+            width: 80px; height: 80px;
+            background: var(--purple-lt);
+            border: 3px solid var(--black);
+            border-radius: 20px;
+            box-shadow: 6px 6px 0 var(--black);
+            transform: rotate(18deg);
+            animation: float-y 6s ease-in-out infinite 1.2s;
+        }
+        /* Bintang kecil */
+        .deco-star {
+            position: absolute;
+            bottom: 28%; left: 12%;
+            font-size: 48px;
+            line-height: 1;
+            animation: spin-slow 15s linear infinite reverse;
+            opacity: .35;
+        }
+
+        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
+        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
+        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+        /* ── MAIN CARD ── */
+        .login-wrap {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 460px;
+            padding: 0 20px;
+        }
+
+        /* Brand header */
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+            animation: slide-up .5s ease both;
+        }
+        .brand-icon {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            width: 68px; height: 68px;
+            background: var(--purple);
+            border: 3px solid var(--black);
+            border-radius: 20px;
+            box-shadow: 5px 5px 0 var(--black);
+            margin-bottom: 18px;
+            font-size: 28px;
+            color: var(--white);
+            transform: rotate(-6deg);
+            transition: transform .3s;
+        }
+        .brand-icon:hover { transform: rotate(0deg); }
+        .brand h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 2.4rem;
+            letter-spacing: -2px;
+            color: var(--black);
+            margin: 0 0 6px;
+            line-height: 1;
+        }
+        .brand h1 span { color: var(--purple); }
+        .brand p {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6B7280;
+            margin: 0;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .brand p .chip {
+            background: var(--purple-lt);
+            color: var(--purple-dark);
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 10px;
+            border-radius: 99px;
+            border: 1.5px solid var(--purple);
+            letter-spacing: .5px;
+        }
+
+        /* Card form */
+        .card {
+            background: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 28px;
+            box-shadow: 8px 8px 0 var(--black);
+            padding: 40px 40px 36px;
+            animation: slide-up .55s ease .08s both;
+        }
+        @media (max-width: 480px) { .card { padding: 28px 22px 24px; } }
+
+        .card-heading {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 1.55rem;
+            letter-spacing: -1px;
+            color: var(--black);
+            margin: 0 0 4px;
+        }
+        .card-sub {
+            font-size: 13px; font-weight: 500;
+            color: #9CA3AF;
+            margin: 0 0 28px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13px; font-weight: 600;
+            display: flex; align-items: flex-start; gap: 10px;
+            margin-bottom: 20px;
+            border: 2px solid;
+        }
+        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
+        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
+
+        /* Label */
+        .field-label {
+            display: block;
+            font-size: 13px; font-weight: 700;
+            color: var(--black);
+            margin-bottom: 8px;
+            letter-spacing: .2px;
+        }
+
+        /* Input */
+        .input-wrap { position: relative; margin-bottom: 18px; }
+        .input-icon {
+            position: absolute; left: 16px; top: 50%;
+            transform: translateY(-50%);
+            color: #A78BFA;
+            font-size: 15px;
+            transition: color .2s;
+            pointer-events: none;
+        }
+        .input-wrap:focus-within .input-icon { color: var(--purple); }
+
+        .field-input {
+            width: 100%;
+            background: var(--gray-soft);
+            border: 2px solid #E5E7EB;
+            border-radius: 14px;
+            padding: 14px 16px 14px 44px;
+            font-size: 14px; font-weight: 500;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--black);
+            transition: border-color .2s, box-shadow .2s, background .2s;
+            outline: none;
+        }
+        .field-input::placeholder { color: #C4B5FD; }
+        .field-input:focus {
+            border-color: var(--purple);
+            background: var(--white);
+            box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple);
+        }
+
+        /* Toggle password */
+        .toggle-pw {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: #A78BFA; font-size: 14px;
+            transition: color .2s;
+            padding: 4px;
+        }
+        .toggle-pw:hover { color: var(--purple); }
+
+        /* Remember + Forgot */
+        .form-meta {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 26px;
+        }
+        .remember-label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 600; color: #374151;
+            cursor: pointer;
+        }
+        .remember-box {
+            appearance: none; width: 18px; height: 18px;
+            border: 2px solid var(--purple);
+            border-radius: 6px; background: var(--white);
+            cursor: pointer; position: relative;
+            transition: background .15s;
+        }
+        .remember-box:checked { background: var(--purple); }
+        .remember-box:checked::after {
+            content: '';
+            position: absolute; top: 2px; left: 5px;
+            width: 5px; height: 9px;
+            border: 2px solid var(--white);
+            border-top: none; border-left: none;
+            transform: rotate(45deg);
+        }
+        .forgot-link {
+            font-size: 13px; font-weight: 700;
+            color: var(--purple);
+            text-decoration: none;
+            transition: color .2s;
+        }
+        .forgot-link:hover { color: var(--purple-dark); text-decoration: underline; }
+
+        /* Submit btn */
+        .btn-submit {
+            width: 100%;
+            background: var(--purple);
+            color: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 14px;
+            padding: 15px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px; font-weight: 800;
+            letter-spacing: .3px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 4px 4px 0 var(--black);
+            transition: transform .15s, box-shadow .15s, background .15s;
+            outline: none;
+        }
+        .btn-submit:hover {
+            background: var(--purple-dark);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--black);
+        }
+        .btn-submit:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--black);
+        }
+
+        /* Register link */
+        .register-row {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .register-link {
+            font-size: 13px; font-weight: 700;
+            color: var(--purple);
+            text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px;
+            border: 2px solid var(--purple-lt);
+            border-radius: 99px;
+            background: var(--purple-lt);
+            transition: all .2s;
+        }
+        .register-link:hover {
+            background: var(--purple);
+            color: var(--white);
+            border-color: var(--purple);
+            transform: translateY(-1px);
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 2px dashed #E5E7EB;
+            margin: 24px 0 20px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 28px;
+            font-size: 12px; font-weight: 500;
+            color: #9CA3AF;
+            animation: slide-up .6s ease .18s both;
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen flex items-center justify-center relative overflow-hidden font-sans antialiased selection:bg-emerald-200 selection:text-emerald-900">
 
+<body>
+
+    <!-- ── PRELOADER ── -->
     <div id="preloader">
-        <div class="diamond-loader">
-            <div class="diamond"></div><div class="diamond"></div><div class="diamond"></div><div class="diamond"></div>
+        <div class="pre-logo">
+            Nusa<span>Learn</span>
+            <span style="font-size:1.6rem; margin-left:4px;">✦</span>
         </div>
     </div>
 
-    <div class="absolute inset-0 w-full h-full bg-slate-50 overflow-hidden z-0 pointer-events-none">
-        <div class="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-        
-        <div class="absolute top-0 -left-4 w-96 h-96 bg-emerald-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-        <div class="absolute top-0 -right-4 w-96 h-96 bg-teal-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-        <div class="absolute -bottom-8 left-20 w-96 h-96 bg-green-300 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-4000"></div>
+    <!-- ── BACKGROUND SCENE ── -->
+    <div class="bg-scene">
+        <div class="dot-grid"></div>
+        <div class="blob-tl"></div>
+        <div class="blob-br"></div>
+        <div class="deco-ring"></div>
+        <div class="deco-arc"></div>
+        <div class="deco-chunky"></div>
+
+        <!-- Badge melayang kiri: status server -->
+        <div class="float-badge">
+            <div class="dot"></div>
+            Server Online
+        </div>
+
+        <!-- Badge melayang kanan: versi -->
+        <div class="float-badge-2">
+            <i class="fa-solid fa-microchip" style="font-size:14px"></i>
+            AI Powered v2.0
+        </div>
+
+        <!-- Bintang dekoratif -->
+        <div class="deco-star" style="color: var(--purple);">✦</div>
     </div>
 
-    <div class="w-full max-w-md relative z-10 px-6 sm:px-0">
-        
-        <div class="text-center mb-8 animate-fade-in-up">
-            <div class="w-16 h-16 mx-auto bg-gradient-to-br from-emerald-500 to-emerald-700 rounded-2xl shadow-lg flex items-center justify-center mb-4 transform rotate-12 hover:rotate-0 transition-transform duration-500">
-                <i class="fa-solid fa-graduation-cap text-white text-3xl -rotate-12 hover:rotate-0 transition-transform duration-500"></i>
+    <!-- ── LOGIN FORM ── -->
+    <div class="login-wrap">
+
+        <!-- Brand -->
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-graduation-cap"></i>
             </div>
-            <h1 class="text-3xl font-extrabold text-slate-800 tracking-tight">Tolaki<span class="text-emerald-600">App</span></h1>
-            <p class="text-slate-500 text-sm mt-1 font-medium">Administrator Gateway</p>
+            <h1>Nusa<span>Learn</span></h1>
+            <p>
+                Administrator Gateway
+                <span class="chip">ADMIN</span>
+            </p>
         </div>
 
-        <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-white/50 p-8 sm:p-10 animate-fade-in-up" style="animation-delay: 0.1s;">
-            
+        <!-- Card -->
+        <div class="card">
+            <p class="card-heading">Selamat datang! 👋</p>
+            <p class="card-sub">Masuk untuk mengakses panel administrator.</p>
+
+            {{-- Alert Sukses --}}
             @if (session('success'))
-                <div class="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-xl flex items-center gap-3 shadow-sm text-sm font-medium animate-fade-in-up" role="alert">
-                    <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-                </div>
+            <div class="alert alert-success">
+                <i class="fa-solid fa-circle-check" style="margin-top:1px"></i>
+                <span>{{ session('success') }}</span>
+            </div>
             @endif
 
+            {{-- Alert Error --}}
             @if ($errors->any())
-                <div class="mb-6 bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl flex items-start gap-3 shadow-sm animate-fade-in-up" role="alert">
-                    <i class="fa-solid fa-triangle-exclamation mt-0.5"></i>
-                    <div>
-                        <strong class="block font-bold text-sm">Otorisasi Ditolak!</strong>
-                        <span class="block text-xs mt-0.5">{{ $errors->first() }}</span>
-                    </div>
+            <div class="alert alert-error">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i>
+                <div>
+                    <strong style="display:block; margin-bottom:2px;">Otorisasi Ditolak!</strong>
+                    <span style="font-weight:500">{{ $errors->first() }}</span>
                 </div>
+            </div>
             @endif
 
-            <form method="POST" action="{{ route('login.post') }}" class="space-y-6">
+            <form method="POST" action="{{ route('login.post') }}">
                 @csrf
 
-                <div>
-                    <label class="block text-slate-700 text-sm font-bold mb-2 ml-1" for="username">
-                        Username Akses
-                    </label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
-                            <i class="fa-solid fa-user-shield text-sm"></i>
-                        </div>
-                        <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-3.5 pl-11 pr-4 text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white shadow-sm" 
-                               id="username" type="text" name="username" value="{{ old('username') }}" required autofocus placeholder="Masukkan ID identitas...">
-                    </div>
+                <!-- Username -->
+                <label class="field-label" for="username">Username Akses</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user-shield input-icon"></i>
+                    <input class="field-input" id="username" type="text"
+                           name="username" value="{{ old('username') }}"
+                           required autofocus placeholder="Masukkan username...">
                 </div>
 
-                <div>
-                    <label class="block text-slate-700 text-sm font-bold mb-2 ml-1" for="password">
-                        Kunci Keamanan (Password)
-                    </label>
-                    <div class="relative group">
-                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-emerald-500 transition-colors">
-                            <i class="fa-solid fa-key text-sm"></i>
-                        </div>
-                        <input class="w-full bg-slate-50 border border-gray-200 rounded-xl py-3.5 pl-11 pr-12 text-slate-800 text-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 focus:bg-white shadow-sm" 
-                               id="password" type="password" name="password" required placeholder="••••••••">
-                        <button type="button" onclick="togglePassword('password', 'eye-icon-login')" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-400 hover:text-emerald-600 transition-colors focus:outline-none">
-                            <i id="eye-icon-login" class="fa-regular fa-eye"></i>
-                        </button>
-                    </div>
+                <!-- Password -->
+                <label class="field-label" for="password">Kunci Keamanan</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-key input-icon"></i>
+                    <input class="field-input" id="password" type="password"
+                           name="password" required
+                           placeholder="••••••••" style="padding-right: 46px;">
+                    <button type="button" class="toggle-pw"
+                            onclick="togglePassword('password', 'eye-icon')">
+                        <i id="eye-icon" class="fa-regular fa-eye"></i>
+                    </button>
                 </div>
 
-                <div class="flex items-center justify-between pt-2">
-                    <label class="flex items-center gap-2 cursor-pointer group">
-                        <div class="relative flex items-center">
-                            <input type="checkbox" name="remember" class="peer appearance-none w-5 h-5 border-2 border-gray-200 rounded-md checked:bg-emerald-500 checked:border-emerald-500 transition-all cursor-pointer">
-                            <i class="fa-solid fa-check absolute text-white text-[10px] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
-                        </div>
-                        <span class="text-sm font-medium text-slate-600 group-hover:text-slate-800 transition-colors">Ingat sesi saya</span>
+                <!-- Meta row -->
+                <div class="form-meta">
+                    <label class="remember-label">
+                        <input type="checkbox" name="remember" class="remember-box">
+                        Ingat sesi saya
                     </label>
-
-                    <a href="{{ route('password.recovery') }}" class="text-sm font-semibold text-emerald-600 hover:text-emerald-800 transition-colors">
+                    <a href="{{ route('password.recovery') }}" class="forgot-link">
                         Lupa kata sandi?
                     </a>
                 </div>
 
-                <div class="pt-4">
-                    <button class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-[0_4px_14px_0_rgba(16,185,129,0.39)] hover:shadow-[0_6px_20px_rgba(16,185,129,0.23)] hover:-translate-y-0.5 transition-all duration-200 flex items-center justify-center gap-2" type="submit">
-                        <i class="fa-solid fa-right-to-bracket"></i> Masuk Sistem
-                    </button>
-                    
-                    <div class="text-center mt-5">
-                        <a href="{{ route('admin.register') }}" class="text-[13px] text-emerald-600 hover:text-emerald-800 font-bold transition-colors inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-user-plus"></i> Pendaftaran Administrator Baru
-                        </a>
-                    </div>
+                <!-- Submit -->
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Masuk Sistem
+                </button>
+
+                <hr class="divider">
+
+                <!-- Register -->
+                <div class="register-row">
+                    <a href="{{ route('admin.register') }}" class="register-link">
+                        <i class="fa-solid fa-user-plus"></i>
+                        Daftarkan Administrator Baru
+                    </a>
                 </div>
+
             </form>
         </div>
-        
-        <div class="text-center mt-8 text-xs font-medium text-slate-400 animate-fade-in-up" style="animation-delay: 0.2s;">
-            <p>&copy; {{ date('Y') }} Tolaki Learning Management System. <br>Secured by Enterprise Security.</p>
+
+        <!-- Footer -->
+        <div class="footer">
+            &copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.
         </div>
+
     </div>
 
     <script>
-        // Imutabilitas Fungsi Toggle Password
+        // Toggle password visibility
         function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
-            const icon = document.getElementById(iconId);
-            
-            if (input.type === "password") {
-                input.type = "text";
-                icon.classList.remove('fa-eye');
-                icon.classList.add('fa-eye-slash');
+            const icon  = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
             } else {
-                input.type = "password";
-                icon.classList.remove('fa-eye-slash');
-                icon.classList.add('fa-eye');
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
             }
         }
 
-        // Imutabilitas Preloader
-        window.addEventListener('load', function() {
-            const preloader = document.getElementById('preloader');
-            preloader.style.opacity = '0';
-            setTimeout(() => { preloader.style.visibility = 'hidden'; }, 600);
+        // Preloader
+        window.addEventListener('load', function () {
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
         });
     </script>
 </body>
