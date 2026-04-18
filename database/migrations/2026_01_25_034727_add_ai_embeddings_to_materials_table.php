@@ -9,7 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('materials', function (Blueprint $table) {
-            $table->text('ai_embeddings')->nullable()->after('content_indo'); // Vector hasil TensorFlow
+            $table->longText('ai_embeddings')->nullable()->after('content_indo'); // Vector hasil TensorFlow
             $table->enum('ai_status', ['pending', 'processing', 'ready', 'failed'])->default('pending')->after('ai_embeddings');
             $table->timestamp('ai_processed_at')->nullable()->after('ai_status');
         });

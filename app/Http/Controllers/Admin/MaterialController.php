@@ -69,7 +69,7 @@ class MaterialController extends Controller
             }
 
             $jsonDebug = "✅ JSON Valid (" . count($decoded) . " blok konten)";
-            $data['content_indo'] = json_encode($decoded);
+            $data['content_indo'] = $decoded;
         }
 
         $pythonScript = base_path('python/ai_processor.py');
@@ -111,33 +111,51 @@ class MaterialController extends Controller
     /**
      * ✅ FUNGSI BARU: TRIGGER PYTHON
      */
-private function processAI($materialId)
-{
-    try {
-        $pythonScript = base_path('python/ai_processor.py');
-        
-        if (!file_exists($pythonScript)) {
-            Log::error("Skrip tidak ditemukan di: " . $pythonScript);
-            return;
-        }
+    /**
+     * ✅ FUNGSI BARU: TRIGGER PYTHON
+     */
+    private function processAI($materialId)
+    {
+        try {
+            $pythonScript = base_path('python/ai_processor.py');
+            
+            if (!file_exists($pythonScript)) {
+                Log::error("Skrip tidak ditemukan di: " . $pythonScript);
+                return;
+            }
 
-        // Di Windows, biasanya perintahnya 'python', bukan 'python3'
+            $pythonBinary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
+
+            // Eksekusi aman non-blocking menggunakan native queue
+            dispatch(function() use ($pythonBinary, $pythonScript, $materialId) {
+                $command = sprintf('"%s" "%s" %d', $pythonBinary, $pythonScript, $materialId);
+                exec($command . ' 2>&1', $output, $returnVar);
+                Log::info("AI Processor result for ID {$materialId}: \n" . implode("\n", $output));
+            })->afterResponse();
+
+            Log::info("AI processing dispatched for ID: {$materialId}");
+
+        } catch (\Exception $e) {
+            Log::error("Gagal trigger AI: " . $e->getMessage());
+        }
+    }
+
+    public function regenerateAI($id)
+    {
+        $material = Material::findOrFail($id);
+        $material->update(['ai_status' => 'pending', 'ai_embeddings' => null]);
+        
+        $pythonScript = base_path('python/ai_processor.py');
         $pythonBinary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
 
-        // Gunakan path absolut yang dibungkus kutipan untuk menghindari masalah spasi di Windows
-        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
-            $command = sprintf('start /B %s "%s" %d', $pythonBinary, $pythonScript, $materialId);
-        } else {
-            $command = sprintf('%s "%s" %d > /dev/null 2>&1 &', $pythonBinary, $pythonScript, $materialId);
-        }
-
-        exec($command);
-        Log::info("AI processing triggered for ID: {$materialId}");
-
-    } catch (\Exception $e) {
-        Log::error("Gagal trigger AI: " . $e->getMessage());
+        dispatch(function() use ($pythonBinary, $pythonScript, $id) {
+            $command = sprintf('"%s" "%s" %d', $pythonBinary, $pythonScript, $id);
+            exec($command . ' 2>&1', $output);
+            Log::info("AI Regenerate result for ID {$id}: \n" . implode("\n", $output));
+        })->afterResponse();
+        
+        return response()->json(['status' => 'success', 'message' => 'Regenerasi dimulai']);
     }
-}
 
     public function update(Request $request, Material $material)
     {
@@ -165,7 +183,7 @@ private function processAI($materialId)
                 return back()->withErrors(['json_file' => 'File JSON baru tidak valid.']);
             }
 
-            $material->content_indo = json_encode($decoded);
+            $material->content_indo = $decoded;
             
             // ✅ TRIGGER AI LAGI KARENA KONTEN BERUBAH
             $material->ai_status = 'pending';
@@ -190,19 +208,6 @@ private function processAI($materialId)
 
         return redirect()->route('materials.index')->with('success', 'Data materi diperbarui!');
     }
-
-    public function regenerateAI($id)
-        {
-            $material = Material::findOrFail($id);
-            $material->update(['ai_status' => 'pending', 'ai_embeddings' => null]);
-            
-            $pythonPath = base_path('python/ai_processor.py');
-            dispatch(function() use ($pythonPath, $id) {
-                exec("python $pythonPath $id");
-            })->afterResponse();
-            
-            return response()->json(['status' => 'success', 'message' => 'Regenerasi dimulai']);
-        }
 
     public function destroy(Material $material)
     {

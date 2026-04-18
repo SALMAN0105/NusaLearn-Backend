@@ -395,6 +395,22 @@ def extract_all_text(full_json: dict) -> str:
 def compute_content_hash(text: str) -> str:
     return hashlib.md5(text.encode("utf-8")).hexdigest()[:12]
 
+# ════════════════════════════════════════════════════════════════════════════
+# MAIN PIPELINE
+# ════════════════════════════════════════════════════════════════════════════
+
+def _sanitize_narrative(data: dict) -> dict:
+    """
+    Pastikan semua field yang diharapkan Map tidak berisi List.
+    GPT kadang mengisi plot: [] untuk materi non-naratif.
+    """
+    if isinstance(data.get('plot'), list):
+        data['plot'] = {}
+    # Pastikan field List memang List
+    for field in ('characters', 'themes', 'moral_values', 'narrative_qa'):
+        if not isinstance(data.get(field), list):
+            data[field] = []
+    return data
 
 # ════════════════════════════════════════════════════════════════════════════
 # MAIN PIPELINE
@@ -422,7 +438,19 @@ def process_material(material_id: int) -> bool:
 
         title        = row["title_indo"] or "Untitled"
         lang_code    = row["language_code"] or "id"
-        full_json    = json.loads(row["content_indo"]) if isinstance(row["content_indo"], str) else row["content_indo"]
+
+        raw_content = row["content_indo"]
+        while isinstance(raw_content, str):
+            try:
+                raw_content = json.loads(raw_content)
+            except json.JSONDecodeError:
+                break
+                
+        full_json = raw_content
+        
+        if not isinstance(full_json, dict):
+            print(f"[ERROR] Struktur content_indo tidak valid. Diharapkan Dictionary, didapatkan {type(full_json)}")
+            return False
         full_text    = extract_all_text(full_json)
         content_hash = compute_content_hash(full_text)
 
@@ -491,6 +519,7 @@ def process_material(material_id: int) -> bool:
         narrative_data = generate_narrative_dataset(full_text, title, lang_code, glossary_bilingual_nd)
 
         if narrative_data:
+            narrative_data = _sanitize_narrative(narrative_data)
             print(f"[OK] Narrative: {len(narrative_data.get('characters', []))} karakter, "
                   f"{len(narrative_data.get('narrative_qa', []))} QA naratif")
         else:

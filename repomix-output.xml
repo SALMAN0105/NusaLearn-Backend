@@ -1,4 +1,5 @@
 
+
 </file_summary>
 
 <directory_structure>
@@ -73,6 +74,40 @@ routes/web.php
 
 <files>
 This section contains the contents of the repository's files.
+
+<file path="app/Exports/KamusExport.php">
+<?php
+
+namespace App\Exports;
+
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithHeadings;
+
+class KamusExport implements FromArray, WithHeadings
+{
+    protected $data;
+
+    public function __construct(array $data)
+    {
+        $this->data = $data;
+    }
+
+    public function array(): array
+    {
+        return $this->data;
+    }
+
+    public function headings(): array
+    {
+        return [
+            'source_text',
+            'target_text',
+            'type',
+            'category'
+        ];
+    }
+}
+</file>
 
 <file path="app/Http/Controllers/Admin/AssetController.php">
 <?php
@@ -517,6 +552,431 @@ class AssetController extends Controller
 }
 </file>
 
+<file path="app/Http/Controllers/Admin/DashboardController.php">
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use App\Models\Material;
+use App\Models\Region; // Pastikan Model ini ada
+use App\Models\StudentProgress;
+use App\Models\Language;
+use Illuminate\Http\Request;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        // 1. Mengambil Statistik Utama (Counters)
+        $stats = [
+            'total_siswa' => User::where('role', 'siswa')->count(),
+            'total_materi' => Material::count(),
+            'total_wilayah' => Region::count(), // Mengambil data dari tabel regions
+            // Menghitung siswa yang aktif hari ini (berdasarkan log progres)
+            'siswa_aktif' => StudentProgress::whereDate('created_at', today())->distinct('user_id')->count('user_id'),
+        ];
+
+        // 2. Mengambil Data Tabel "Pemantauan Siswa" (5 Data Terbaru)
+        $recentProgress = StudentProgress::with(['user', 'question.material'])
+            ->latest()
+            ->take(5)
+            ->get();
+
+        // 3. Mengambil Data untuk Widget "Deteksi Bahasa"
+        // Kita tampilkan bahasa apa saja yang sudah terdaftar di sistem
+        $activeLanguages = Language::where('is_active', true)->get();
+
+        return view('admin.dashboard', compact('stats', 'recentProgress', 'activeLanguages'));
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Api/AuthController.php">
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use App\Models\Region;
+
+class AuthController extends Controller
+{
+    public function login(Request $request)
+    {
+        $request->validate([
+            'username' => 'required',
+            'password' => 'required',
+        ]);
+
+        // Cek kredensial
+        if (!Auth::attempt($request->only('username', 'password'))) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Username atau password salah',
+            ], 401);
+        }
+
+        $user = User::where('username', $request->username)->firstOrFail();
+
+        // Cek Role (Hanya Siswa yang boleh login di Mobile)
+        if ($user->role !== 'siswa') {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Aplikasi ini khusus untuk Siswa.',
+            ], 403);
+        }
+
+        // Buat Token Sanctum
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'username' => $user->username,
+                    'role' => $user->role,
+                    'school_origin' => $user->school_origin,
+                    'postal_code' => $user->postal_code,
+                    'language_code' => $user->language_code,
+                    'image_url' => $user->image_url 
+                        ? asset('storage/' . $user->image_url) 
+                        : null,
+                ],
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+            ]
+        ]);
+    }
+
+    public function register(Request $request)
+    {
+        // ✅ Validasi sesuai nama kolom database ASLI
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:50|unique:users',
+            'password' => 'required|string|min:6',
+            'school_origin' => 'required|string',
+            'postal_code' => 'required|string|max:10',
+        ]);
+
+        // ✅ Query dengan nama kolom ASLI: postal_code (dengan underscore)
+        $region = Region::where('postal_code', $validated['postal_code'])->first();
+
+        // ✅ Validasi region
+        if (!$region) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kode pos tidak terdaftar di sistem. Silakan hubungi admin untuk mendaftarkan wilayah Anda.',
+                'postal_code' => $validated['postal_code'],
+            ], 422);
+        }
+
+        // ✅ Create user dengan language_code dari region
+        $user = User::create([
+            'name' => $validated['name'],
+            'username' => $validated['username'],
+            'password' => bcrypt($validated['password']),
+            'role' => 'siswa',
+            'school_origin' => $validated['school_origin'],
+            'postal_code' => $validated['postal_code'],
+            'language_code' => $region->language_code, // ✅ DENGAN UNDERSCORE
+        ]);
+
+        $token = $user->createToken('auth_token')->plainTextToken;
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Registrasi berhasil',
+            'data' => [
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'username' => $user->username,
+                    'role' => $user->role,
+                    'school_origin' => $user->school_origin,
+                    'postal_code' => $user->postal_code,
+                    'language_code' => $user->language_code,
+                    'image_url' => $user->image_url 
+                        ? asset('storage/' . $user->image_url) 
+                        : null,
+                ],
+                'access_token' => $token,
+                'token_type' => 'Bearer',
+            ]
+        ], 201);
+    }
+
+    public function logout(Request $request)
+    {
+        $user = $request->user();
+
+        if ($user) {
+            $user->currentAccessToken()->delete();
+        }
+
+        return response()->json(['message' => 'Logged out successfully']);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Api/ProfileController.php">
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+
+class ProfileController extends Controller
+{
+    // 1. Update Profil (Nama & Foto)
+    public function updateProfile(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:255',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
+        ]);
+
+        $user = $request->user();
+        $user->name = $request->name;
+
+        // Upload Foto jika ada
+        if ($request->hasFile('image')) {
+            // Hapus foto lama jika bukan default (opsional)
+            // if ($user->image_url) Storage::disk('public')->delete($user->image_url);
+
+            $path = $request->file('image')->store('profile_photos', 'public');
+            // Simpan path relatif agar mudah diakses via API
+            // Pastikan Anda punya accessor atau logic URL di Flutter
+            $user->image_url = $path; 
+        }
+
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Profil berhasil diperbarui',
+            'data' => [
+                'name' => $user->name,
+                // Pastikan kirim Full URL
+                'image_url' => $user->image_url ? asset('storage/' . $user->image_url) : null,
+            ]
+        ]);
+    }
+
+    // 2. Ganti Password
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => 'required',
+            'new_password' => 'required|min:6|confirmed', // butuh field new_password_confirmation
+        ]);
+
+        $user = $request->user();
+
+        // Cek password lama
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Kata sandi lama salah.',
+            ], 422);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Kata sandi berhasil diubah.',
+        ]);
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/AdminRegisterController.php">
+<?php
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password; // Wajib ditambahkan
+
+class AdminRegisterController extends Controller
+{
+    public function showRegisterForm()
+    {
+        return view('auth.register');
+    }
+
+    public function register(Request $request)
+    {
+        // Parameter Keamanan Absolut (Konstanta Access Code)
+        $expectedAccessCode = 'NUSALEARN-2026';
+
+        $request->validate([
+            // Validasi Kode Akses Kustom
+            'access_code' => ['required', 'string', 'in:' . $expectedAccessCode],
+            
+            'name' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users',
+            'school_origin' => 'required|string|max:255',
+            
+            // Aturan Kompleksitas Password Laravel
+            'password' => [
+                'required',
+                'confirmed',
+                Password::min(8) // Minimal 8 karakter
+                    ->mixedCase() // Harus ada Huruf Besar dan Kecil
+                    ->letters() // Harus mengandung huruf
+                    ->numbers() // Harus mengandung angka
+                    ->symbols() // Harus mengandung simbol (@, #, dsb)
+                    ->uncompromised(), // Menolak password yang bocor di database publik (Optional tapi disarankan)
+            ],
+        ], [
+            // Custom Error Message untuk Kode Akses agar user tahu alasannya
+            'access_code.in' => 'Kode Akses Pendaftaran tidak valid. Silakan hubungi Super Admin.',
+            'access_code.required' => 'Kode Akses wajib diisi.',
+            
+            // Custom Error Message (opsional) agar bahasa Indonesia
+            'password.mixed' => 'Password wajib mengandung huruf besar dan kecil.',
+            'password.numbers' => 'Password wajib mengandung minimal 1 angka.',
+            'password.symbols' => 'Password wajib mengandung minimal 1 simbol khusus.',
+        ]);
+
+        // Simpan ke Database secara Imutabel
+        User::create([
+            'name' => $request->name,
+            'username' => $request->username,
+            'email' => $request->email,
+            'school_origin' => $request->school_origin,
+            'role' => 'admin', // Role dikunci statis
+            'password' => Hash::make($request->password), // Enkripsi tervalidasi
+        ]);
+
+        return redirect()->route('login')->with('success', 'Registrasi Admin Sekolah Berhasil! Silakan login.');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Auth/PasswordRecoveryController.php">
+<?php
+
+namespace App\Http\Controllers\Auth;
+
+use App\Http\Controllers\Controller;
+use App\Models\User;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Validation\Rules\Password;
+
+class PasswordRecoveryController extends Controller
+{
+    // 1. Render UI Terpadu
+    public function showRecoveryView(Request $request)
+    {
+        // Secara default menampilkan form email, kecuali ada session step aktif
+        $step = session('step', 'request_email');
+        return view('auth.password-recovery', compact('step'));
+    }
+
+    // 2. Fase: Validasi Email & Kirim OTP
+    public function sendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email|exists:users,email']);
+        $email = $request->email;
+
+        // Generate 6 Digit OTP Kriptografik (Secure Random)
+        $otp = random_int(100000, 999999);
+
+        // Simpan OTP ke RAM/Cache dengan TTL 10 Menit (O(1) Time Complexity)
+        Cache::put('otp_reset_' . $email, $otp, now()->addMinutes(10));
+
+        // Kirim Email secara Sinkron (Di Production gunakan Queues/Jobs)
+        Mail::send('emails.otp-reset', ['otp' => $otp], function($message) use ($email) {
+            $message->to($email)->subject('Kode Verifikasi Reset Password - TolakiApp');
+        });
+
+        // Simpan state email ke session untuk divalidasi di step selanjutnya
+        session(['reset_email' => $email, 'step' => 'verify_otp']);
+
+        return back()->with('success', 'Kode verifikasi telah dikirim ke email Anda.');
+    }
+
+    // 3. Fase: Validasi OTP
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'otp' => 'required|numeric|digits:6',
+        ]);
+
+        $email = session('reset_email');
+        $cachedOtp = Cache::get('otp_reset_' . $email);
+
+        if (!$cachedOtp || $cachedOtp != $request->otp) {
+            return back()->withErrors(['otp' => 'Kode OTP tidak valid atau telah kedaluwarsa.']);
+        }
+
+        // OTP Valid, transisi ke form password baru
+        session(['step' => 'reset_password', 'otp_verified' => true]);
+        return back()->with('success', 'Verifikasi berhasil. Silakan buat password baru.');
+    }
+
+    // 4. Fase: Eksekusi Ganti Password (Defensive)
+    public function resetPassword(Request $request)
+    {
+        // Cegah akses langsung tanpa verifikasi OTP
+        if (!session('otp_verified')) {
+            return redirect()->route('password.recovery')->withErrors(['email' => 'Sesi tidak valid. Ulangi proses.']);
+        }
+
+        $request->validate([
+            'password' => [
+                'required', 'confirmed',
+                Password::min(8)->mixedCase()->numbers()->symbols()
+            ]
+        ]);
+
+        $email = session('reset_email');
+        $user = User::where('email', $email)->firstOrFail();
+
+        // Update Kredensial
+        $user->password = Hash::make($request->password);
+        $user->save();
+
+        // Garbage Collection: Hapus jejak cache dan session keamanan
+        Cache::forget('otp_reset_' . $email);
+        session()->forget(['reset_email', 'step', 'otp_verified']);
+
+        return redirect()->route('login')->with('success', 'Password berhasil diperbarui! Silakan login.');
+    }
+}
+</file>
+
+<file path="app/Http/Controllers/Controller.php">
+<?php
+
+namespace App\Http\Controllers;
+
+abstract class Controller
+{
+    //
+}
+</file>
+
 <file path="app/Models/AssetLibrary.php">
 <?php
 
@@ -710,6 +1170,189 @@ class AssetLibrary extends Model
     public static function hashExists(string $hash): bool
     {
         return static::where('filename', $hash)->exists();
+    }
+}
+</file>
+
+<file path="app/Models/FileConversion.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class FileConversion extends Model
+{
+    use HasFactory;
+
+    /**
+     * Nama tabel di database (opsional, tapi praktik yang baik untuk kepastian absolut)
+     */
+    protected $table = 'file_conversions';
+
+    /**
+     * Atribut yang diizinkan untuk mass assignment.
+     * Ini krusial untuk mencegah kerentanan Mass-Assignment Vulnerability.
+     * * @var array<int, string>
+     */
+    protected $fillable = [
+        'original_filename',
+        'conversion_type',
+        'json_output_path',
+        'file_size_kb',
+        'status',
+        'error_log',
+    ];
+
+    /**
+     * Casting tipe data secara native agar ORM mengembalikan format yang presisi (bukan sekadar string).
+     *
+     * @var array<string, string>
+     */
+    protected $casts = [
+        'file_size_kb' => 'integer',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+    ];
+}
+</file>
+
+<file path="app/Models/Language.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class Language extends Model
+{
+    use HasFactory;
+
+    protected $fillable = ['name', 'code', 'is_active', 'json_file', 'version_hash'];
+}
+</file>
+
+<file path="app/Models/Material.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class Material extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'school_origin',
+        'title_indo',
+        'content_indo',
+        'category',         // 'literasi' atau 'numerasi'
+        'image_url',
+        'level_difficulty', // 1 (Mudah) - 3 (Sulit)
+        'language_code',    // Scope bahasa materi ini (Baru)
+        'ai_embeddings',
+        'ai_status',
+        'ai_processed_at',
+    ];
+
+    protected $casts = [
+        'content_indo' => 'array',
+        'ai_embeddings' => 'array',
+        'ai_processed_at' => 'datetime',
+    ];
+
+    // Relasi: Satu Materi punya banyak Soal
+    public function questions()
+    {
+        return $this->hasMany(Question::class);
+    }
+}
+</file>
+
+<file path="app/Models/Region.php">
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Region extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'postal_code',
+        'district_name',
+        'language_code',
+        'default_content_version',
+    ];
+}
+</file>
+
+<file path="app/Models/User.php">
+<?php
+
+namespace App\Models;
+
+// use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+
+class User extends Authenticatable
+{
+    /** @use HasFactory<\Database\Factories\UserFactory> */
+    use HasApiTokens, HasFactory, Notifiable;
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var list<string>
+     */
+    protected $fillable = [
+        'name',
+        'username',
+        'password',
+        'email',
+        'role',
+        'school_origin',
+        'postal_code',
+        'language_code',
+        'image_url',
+    ];
+
+    /**
+     * The attributes that should be hidden for serialization.
+     *
+     * @var list<string>
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
+
+    /**
+     * Get the attributes that should be cast.
+     *
+     * @return array<string, string>
+     */
+    protected function casts(): array
+    {
+        return [
+            'password' => 'hashed',
+        ];
+    }
+
+    public function progress()
+    {
+        return $this->hasMany(StudentProgress::class);
     }
 }
 </file>
@@ -2401,6 +3044,468 @@ PROMPT;
 }
 </file>
 
+<file path="database/migrations/0001_01_01_000000_create_users_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('users', function (Blueprint $table) {
+            $table->id();
+            $table->string('name');
+            $table->string('username')->unique();
+            $table->string('password');
+            $table->string('email')->unique()->nullable();
+            $table->string('postal_code')->nullable();
+            $table->string('language_code')->default('tolaki mekongga');
+            $table->enum('role', ['admin', 'siswa'])->default('siswa');
+            $table->string('school_origin')->nullable();
+            $table->rememberToken();
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('password_reset_tokens', function (Blueprint $table) {
+            $table->string('email')->primary();
+            $table->string('token');
+            $table->timestamp('created_at')->nullable();
+        });
+
+        Schema::create('sessions', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->foreignId('user_id')->nullable()->index();
+            $table->string('ip_address', 45)->nullable();
+            $table->text('user_agent')->nullable();
+            $table->longText('payload');
+            $table->integer('last_activity')->index();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('password_reset_tokens');
+        Schema::dropIfExists('sessions');
+    }
+};
+</file>
+
+<file path="database/migrations/0001_01_01_000001_create_cache_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('cache', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->mediumText('value');
+            $table->integer('expiration');
+        });
+
+        Schema::create('cache_locks', function (Blueprint $table) {
+            $table->string('key')->primary();
+            $table->string('owner');
+            $table->integer('expiration');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('cache');
+        Schema::dropIfExists('cache_locks');
+    }
+};
+</file>
+
+<file path="database/migrations/0001_01_01_000002_create_jobs_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('queue')->index();
+            $table->longText('payload');
+            $table->unsignedTinyInteger('attempts');
+            $table->unsignedInteger('reserved_at')->nullable();
+            $table->unsignedInteger('available_at');
+            $table->unsignedInteger('created_at');
+        });
+
+        Schema::create('job_batches', function (Blueprint $table) {
+            $table->string('id')->primary();
+            $table->string('name');
+            $table->integer('total_jobs');
+            $table->integer('pending_jobs');
+            $table->integer('failed_jobs');
+            $table->longText('failed_job_ids');
+            $table->mediumText('options')->nullable();
+            $table->integer('cancelled_at')->nullable();
+            $table->integer('created_at');
+            $table->integer('finished_at')->nullable();
+        });
+
+        Schema::create('failed_jobs', function (Blueprint $table) {
+            $table->id();
+            $table->string('uuid')->unique();
+            $table->text('connection');
+            $table->text('queue');
+            $table->longText('payload');
+            $table->longText('exception');
+            $table->timestamp('failed_at')->useCurrent();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('jobs');
+        Schema::dropIfExists('job_batches');
+        Schema::dropIfExists('failed_jobs');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_26_090237_create_materials_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+        public function up(): void
+        {
+            Schema::create('materials', function (Blueprint $table) {
+                $table->id();
+                $table->string('school_origin')->nullable();
+                $table->string('title_indo');
+                $table->json('content_indo');
+                $table->enum('category', ['literasi', 'numerasi','budaya']);
+                $table->string('language_code')->default('global');              
+                $table->string('image_url')->nullable(); // URL gambar cover/aset
+                $table->integer('level_difficulty')->default(1); // 1: Mudah, 2: Sedang, 3: Sulit
+                $table->softDeletes(); // PENTING untuk sinkronisasi (Delta Sync - PULL)
+                $table->timestamps();
+            });
+        }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('materials');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_26_090237_create_questions_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+public function up(): void
+{
+    Schema::create('questions', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
+        $table->text('question_text_indo');
+        $table->json('options_json'); 
+        $table->string('correct_answer_key', 1);
+        $table->integer('difficulty_weight')->default(1);
+        $table->softDeletes();
+        $table->timestamps();
+    });
+}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('questions');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_26_090238_create_student_progress_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+public function up(): void
+{
+    Schema::create('student_progress', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
+        $table->foreignId('question_id')->constrained('questions')->onDelete('cascade');
+        
+        $table->string('student_answer'); // Jawaban yang dipilih siswa
+        $table->boolean('is_correct'); // Benar/Salah
+        $table->integer('time_spent_seconds')->default(0); // Lama pengerjaan (untuk analisis)
+        
+        $table->timestamp('answered_at'); // Waktu mengerjakan di HP (bukan waktu upload ke server)
+        $table->timestamps(); // Waktu data masuk ke server
+    });
+}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('student_progress');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_26_092050_create_regions_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+public function up(): void
+{
+    Schema::create('regions', function (Blueprint $table) {
+        $table->id();
+        $table->string('postal_code')->unique(); // Kunci utamanya
+        $table->string('district_name');
+        $table->string('language_code')->default('tolaki'); // tolaki, muna, buton
+        $table->timestamps();
+    });
+}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('regions');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_26_100705_create_languages_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+public function up(): void
+{
+    Schema::create('languages', function (Blueprint $table) {
+        $table->id();
+        $table->string('name'); // Contoh: Bahasa Tolaki
+        $table->string('code')->unique(); // Contoh: tolaki, bugis, muna (Untuk sistem)
+        $table->string('flag_icon')->nullable(); // Opsional: URL icon bendera/simbol daerah
+        $table->boolean('is_active')->default(true); // Fitur untuk mematikan bahasa sementara
+        $table->string('json_file')->nullable();
+        $table->string('version_hash', 64)->nullable();
+        $table->timestamps();
+    });
+}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('languages');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_27_103645_create_personal_access_tokens_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('personal_access_tokens', function (Blueprint $table) {
+            $table->id();
+            $table->morphs('tokenable');
+            $table->text('name');
+            $table->string('token', 64)->unique();
+            $table->text('abilities')->nullable();
+            $table->timestamp('last_used_at')->nullable();
+            $table->timestamp('expires_at')->nullable()->index();
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('personal_access_tokens');
+    }
+};
+</file>
+
+<file path="database/migrations/2025_12_30_052136_add_image_url_to_users_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            // Tambahkan kolom image_url, boleh kosong (nullable)
+            // Simpan setelah kolom 'name' atau 'email' agar rapi
+            $table->string('image_url')->nullable()->after('name');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropColumn('image_url');
+        });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_01_25_034727_add_ai_embeddings_to_materials_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('materials', function (Blueprint $table) {
+            $table->text('ai_embeddings')->nullable()->after('content_indo'); // Vector hasil TensorFlow
+            $table->enum('ai_status', ['pending', 'processing', 'ready', 'failed'])->default('pending')->after('ai_embeddings');
+            $table->timestamp('ai_processed_at')->nullable()->after('ai_status');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('materials', function (Blueprint $table) {
+            $table->dropColumn(['ai_embeddings', 'ai_status', 'ai_processed_at']);
+        });
+    }
+};
+</file>
+
+<file path="database/migrations/2026_03_02_031526_create_file_conversions_table.php">
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('file_conversions', function (Blueprint $table) {
+            $table->id();
+            $table->string('original_filename');
+            $table->string('conversion_type'); // 'kamus_excel' atau 'materi_pdf'
+            $table->string('json_output_path');
+            $table->integer('file_size_kb');
+            $table->enum('status', ['success', 'failed']);
+            $table->text('error_log')->nullable();
+            $table->timestamps();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('file_conversions');
+    }
+};
+</file>
+
 <file path="database/migrations/2026_04_14_023609_create_asset_libraries_table.php">
 <?php
 
@@ -3100,79 +4205,53 @@ function copyManifest() {
 </html>
 </file>
 
-<file path="app/Exports/KamusExport.php">
-<?php
+<file path="resources/views/emails/otp-reset.blade.php">
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Kode Verifikasi NusalearnApp</title>
+</head>
+<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 0;">
+    <div style="max-w-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+        
+        <div style="background-color: #059669; padding: 30px 20px; text-align: center;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">Nusaleran<span style="color: #a7f3d0;">App</span></h1>
+            <p style="color: #d1fae5; margin: 5px 0 0 0; font-size: 14px;">Enterprise Security System</p>
+        </div>
 
-namespace App\Exports;
+        <div style="padding: 30px 40px; color: #334155;">
+            <h2 style="font-size: 18px; margin-top: 0;">Permintaan Reset Kredensial</h2>
+            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
+                Halo! Saya developer <strong>Nusalearn</strong>, ini code verifikasi mu untuk melakukan reset password pada portal Administrator NusalearnApp.
+            </p>
+            
+            <div style="background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin: 25px 0;">
+                <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a;">{{ $otp }}</span>
+            </div>
+            
+            <p style="font-size: 13px; color: #ef4444; background-color: #fef2f2; padding: 10px; border-radius: 6px;">
+                <strong>Peringatan Keamanan:</strong> Kode ini hanya berlaku selama 10 Menit. Jangan berikan kode ini kepada siapapun, termasuk pihak Nusalearn.
+            </p>
+        </div>
 
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-
-class KamusExport implements FromArray, WithHeadings
-{
-    protected $data;
-
-    public function __construct(array $data)
-    {
-        $this->data = $data;
-    }
-
-    public function array(): array
-    {
-        return $this->data;
-    }
-
-    public function headings(): array
-    {
-        return [
-            'source_text',
-            'target_text',
-            'type',
-            'category'
-        ];
-    }
-}
+        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
+            <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; {{ date('Y') }} Nusalearn Learning Management System.<br>Generated automatically by System.</p>
+        </div>
+    </div>
+</body>
+</html>
 </file>
 
-<file path="app/Http/Controllers/Admin/DashboardController.php">
+<file path="routes/console.php">
 <?php
 
-namespace App\Http\Controllers\Admin;
+use Illuminate\Foundation\Inspiring;
+use Illuminate\Support\Facades\Artisan;
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\Material;
-use App\Models\Region; // Pastikan Model ini ada
-use App\Models\StudentProgress;
-use App\Models\Language;
-use Illuminate\Http\Request;
-
-class DashboardController extends Controller
-{
-    public function index()
-    {
-        // 1. Mengambil Statistik Utama (Counters)
-        $stats = [
-            'total_siswa' => User::where('role', 'siswa')->count(),
-            'total_materi' => Material::count(),
-            'total_wilayah' => Region::count(), // Mengambil data dari tabel regions
-            // Menghitung siswa yang aktif hari ini (berdasarkan log progres)
-            'siswa_aktif' => StudentProgress::whereDate('created_at', today())->distinct('user_id')->count('user_id'),
-        ];
-
-        // 2. Mengambil Data Tabel "Pemantauan Siswa" (5 Data Terbaru)
-        $recentProgress = StudentProgress::with(['user', 'question.material'])
-            ->latest()
-            ->take(5)
-            ->get();
-
-        // 3. Mengambil Data untuk Widget "Deteksi Bahasa"
-        // Kita tampilkan bahasa apa saja yang sudah terdaftar di sistem
-        $activeLanguages = Language::where('is_active', true)->get();
-
-        return view('admin.dashboard', compact('stats', 'recentProgress', 'activeLanguages'));
-    }
-}
+Artisan::command('inspire', function () {
+    $this->comment(Inspiring::quote());
+})->purpose('Display an inspiring quote');
 </file>
 
 <file path="app/Http/Controllers/Admin/LanguageController.php">
@@ -4079,6 +5158,36 @@ class QuestionController extends Controller
 
     return back()->with('success', "Soal {$templateLabels[$templateType]} berhasil disimpan ke bank soal!");
 }
+public function generateExplanationApi(Request $request)
+    {
+        $request->validate([
+            'question' => 'required|string'
+        ]);
+
+        try {
+            $client = \OpenAI::factory()
+                ->withApiKey(env('OPENAI_API_KEY'))
+                ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.openai.com/v1'))
+                ->make();
+
+            $prompt = "Sebagai guru ahli, berikan penjelasan singkat dan mudah dipahami siswa mengapa pertanyaan berikut penting atau apa konsep utamanya. Maksimal 3 kalimat. Pertanyaan: '{$request->question}'";
+
+            $response = $client->chat()->create([
+                'model'           => 'gpt-4o-mini',
+                'messages'        => [
+                    ['role' => 'system', 'content' => 'Anda adalah guru SD/SMP yang ramah.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+            ]);
+
+            return response()->json([
+                'status' => 'success',
+                'explanation' => trim($response->choices[0]->message->content)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
+    }
 }
 </file>
 
@@ -4245,215 +5354,6 @@ class StudentController extends Controller
     {
         $student->delete();
         return back()->with('success', 'Data siswa berhasil dihapus.');
-    }
-}
-</file>
-
-<file path="app/Http/Controllers/Api/AuthController.php">
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use App\Models\Region;
-
-class AuthController extends Controller
-{
-    public function login(Request $request)
-    {
-        $request->validate([
-            'username' => 'required',
-            'password' => 'required',
-        ]);
-
-        // Cek kredensial
-        if (!Auth::attempt($request->only('username', 'password'))) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Username atau password salah',
-            ], 401);
-        }
-
-        $user = User::where('username', $request->username)->firstOrFail();
-
-        // Cek Role (Hanya Siswa yang boleh login di Mobile)
-        if ($user->role !== 'siswa') {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Aplikasi ini khusus untuk Siswa.',
-            ], 403);
-        }
-
-        // Buat Token Sanctum
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'status' => 'success',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'role' => $user->role,
-                    'school_origin' => $user->school_origin,
-                    'postal_code' => $user->postal_code,
-                    'language_code' => $user->language_code,
-                    'image_url' => $user->image_url 
-                        ? asset('storage/' . $user->image_url) 
-                        : null,
-                ],
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ]
-        ]);
-    }
-
-    public function register(Request $request)
-    {
-        // ✅ Validasi sesuai nama kolom database ASLI
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:50|unique:users',
-            'password' => 'required|string|min:6',
-            'school_origin' => 'required|string',
-            'postal_code' => 'required|string|max:10',
-        ]);
-
-        // ✅ Query dengan nama kolom ASLI: postal_code (dengan underscore)
-        $region = Region::where('postal_code', $validated['postal_code'])->first();
-
-        // ✅ Validasi region
-        if (!$region) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Kode pos tidak terdaftar di sistem. Silakan hubungi admin untuk mendaftarkan wilayah Anda.',
-                'postal_code' => $validated['postal_code'],
-            ], 422);
-        }
-
-        // ✅ Create user dengan language_code dari region
-        $user = User::create([
-            'name' => $validated['name'],
-            'username' => $validated['username'],
-            'password' => bcrypt($validated['password']),
-            'role' => 'siswa',
-            'school_origin' => $validated['school_origin'],
-            'postal_code' => $validated['postal_code'],
-            'language_code' => $region->language_code, // ✅ DENGAN UNDERSCORE
-        ]);
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Registrasi berhasil',
-            'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'role' => $user->role,
-                    'school_origin' => $user->school_origin,
-                    'postal_code' => $user->postal_code,
-                    'language_code' => $user->language_code,
-                    'image_url' => $user->image_url 
-                        ? asset('storage/' . $user->image_url) 
-                        : null,
-                ],
-                'access_token' => $token,
-                'token_type' => 'Bearer',
-            ]
-        ], 201);
-    }
-
-    public function logout(Request $request)
-    {
-        $user = $request->user();
-
-        if ($user) {
-            $user->currentAccessToken()->delete();
-        }
-
-        return response()->json(['message' => 'Logged out successfully']);
-    }
-}
-</file>
-
-<file path="app/Http/Controllers/Api/ProfileController.php">
-<?php
-
-namespace App\Http\Controllers\Api;
-
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Storage;
-
-class ProfileController extends Controller
-{
-    // 1. Update Profil (Nama & Foto)
-    public function updateProfile(Request $request)
-    {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
-        ]);
-
-        $user = $request->user();
-        $user->name = $request->name;
-
-        // Upload Foto jika ada
-        if ($request->hasFile('image')) {
-            // Hapus foto lama jika bukan default (opsional)
-            // if ($user->image_url) Storage::disk('public')->delete($user->image_url);
-
-            $path = $request->file('image')->store('profile_photos', 'public');
-            // Simpan path relatif agar mudah diakses via API
-            // Pastikan Anda punya accessor atau logic URL di Flutter
-            $user->image_url = $path; 
-        }
-
-        $user->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Profil berhasil diperbarui',
-            'data' => [
-                'name' => $user->name,
-                // Pastikan kirim Full URL
-                'image_url' => $user->image_url ? asset('storage/' . $user->image_url) : null,
-            ]
-        ]);
-    }
-
-    // 2. Ganti Password
-    public function changePassword(Request $request)
-    {
-        $request->validate([
-            'current_password' => 'required',
-            'new_password' => 'required|min:6|confirmed', // butuh field new_password_confirmation
-        ]);
-
-        $user = $request->user();
-
-        // Cek password lama
-        if (!Hash::check($request->current_password, $user->password)) {
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Kata sandi lama salah.',
-            ], 422);
-        }
-
-        $user->password = Hash::make($request->new_password);
-        $user->save();
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Kata sandi berhasil diubah.',
-        ]);
     }
 }
 </file>
@@ -5322,74 +6222,6 @@ class SyncController extends Controller
 }
 </file>
 
-<file path="app/Http/Controllers/Auth/AdminRegisterController.php">
-<?php
-namespace App\Http\Controllers\Auth;
-
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password; // Wajib ditambahkan
-
-class AdminRegisterController extends Controller
-{
-    public function showRegisterForm()
-    {
-        return view('auth.register');
-    }
-
-    public function register(Request $request)
-    {
-        // Parameter Keamanan Absolut (Konstanta Access Code)
-        $expectedAccessCode = 'NUSALEARN-2026';
-
-        $request->validate([
-            // Validasi Kode Akses Kustom
-            'access_code' => ['required', 'string', 'in:' . $expectedAccessCode],
-            
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:255|unique:users',
-            'email' => 'required|string|email|max:255|unique:users',
-            'school_origin' => 'required|string|max:255',
-            
-            // Aturan Kompleksitas Password Laravel
-            'password' => [
-                'required',
-                'confirmed',
-                Password::min(8) // Minimal 8 karakter
-                    ->mixedCase() // Harus ada Huruf Besar dan Kecil
-                    ->letters() // Harus mengandung huruf
-                    ->numbers() // Harus mengandung angka
-                    ->symbols() // Harus mengandung simbol (@, #, dsb)
-                    ->uncompromised(), // Menolak password yang bocor di database publik (Optional tapi disarankan)
-            ],
-        ], [
-            // Custom Error Message untuk Kode Akses agar user tahu alasannya
-            'access_code.in' => 'Kode Akses Pendaftaran tidak valid. Silakan hubungi Super Admin.',
-            'access_code.required' => 'Kode Akses wajib diisi.',
-            
-            // Custom Error Message (opsional) agar bahasa Indonesia
-            'password.mixed' => 'Password wajib mengandung huruf besar dan kecil.',
-            'password.numbers' => 'Password wajib mengandung minimal 1 angka.',
-            'password.symbols' => 'Password wajib mengandung minimal 1 simbol khusus.',
-        ]);
-
-        // Simpan ke Database secara Imutabel
-        User::create([
-            'name' => $request->name,
-            'username' => $request->username,
-            'email' => $request->email,
-            'school_origin' => $request->school_origin,
-            'role' => 'admin', // Role dikunci statis
-            'password' => Hash::make($request->password), // Enkripsi tervalidasi
-        ]);
-
-        return redirect()->route('login')->with('success', 'Registrasi Admin Sekolah Berhasil! Silakan login.');
-    }
-}
-</file>
-
 <file path="app/Http/Controllers/Auth/LoginController.php">
 <?php
 
@@ -5455,213 +6287,6 @@ class LoginController extends Controller
         $request->session()->regenerateToken();
 
         return redirect('/admin/login');
-    }
-}
-</file>
-
-<file path="app/Http/Controllers/Auth/PasswordRecoveryController.php">
-<?php
-
-namespace App\Http\Controllers\Auth;
-
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Mail;
-use Illuminate\Validation\Rules\Password;
-
-class PasswordRecoveryController extends Controller
-{
-    // 1. Render UI Terpadu
-    public function showRecoveryView(Request $request)
-    {
-        // Secara default menampilkan form email, kecuali ada session step aktif
-        $step = session('step', 'request_email');
-        return view('auth.password-recovery', compact('step'));
-    }
-
-    // 2. Fase: Validasi Email & Kirim OTP
-    public function sendOtp(Request $request)
-    {
-        $request->validate(['email' => 'required|email|exists:users,email']);
-        $email = $request->email;
-
-        // Generate 6 Digit OTP Kriptografik (Secure Random)
-        $otp = random_int(100000, 999999);
-
-        // Simpan OTP ke RAM/Cache dengan TTL 10 Menit (O(1) Time Complexity)
-        Cache::put('otp_reset_' . $email, $otp, now()->addMinutes(10));
-
-        // Kirim Email secara Sinkron (Di Production gunakan Queues/Jobs)
-        Mail::send('emails.otp-reset', ['otp' => $otp], function($message) use ($email) {
-            $message->to($email)->subject('Kode Verifikasi Reset Password - TolakiApp');
-        });
-
-        // Simpan state email ke session untuk divalidasi di step selanjutnya
-        session(['reset_email' => $email, 'step' => 'verify_otp']);
-
-        return back()->with('success', 'Kode verifikasi telah dikirim ke email Anda.');
-    }
-
-    // 3. Fase: Validasi OTP
-    public function verifyOtp(Request $request)
-    {
-        $request->validate([
-            'otp' => 'required|numeric|digits:6',
-        ]);
-
-        $email = session('reset_email');
-        $cachedOtp = Cache::get('otp_reset_' . $email);
-
-        if (!$cachedOtp || $cachedOtp != $request->otp) {
-            return back()->withErrors(['otp' => 'Kode OTP tidak valid atau telah kedaluwarsa.']);
-        }
-
-        // OTP Valid, transisi ke form password baru
-        session(['step' => 'reset_password', 'otp_verified' => true]);
-        return back()->with('success', 'Verifikasi berhasil. Silakan buat password baru.');
-    }
-
-    // 4. Fase: Eksekusi Ganti Password (Defensive)
-    public function resetPassword(Request $request)
-    {
-        // Cegah akses langsung tanpa verifikasi OTP
-        if (!session('otp_verified')) {
-            return redirect()->route('password.recovery')->withErrors(['email' => 'Sesi tidak valid. Ulangi proses.']);
-        }
-
-        $request->validate([
-            'password' => [
-                'required', 'confirmed',
-                Password::min(8)->mixedCase()->numbers()->symbols()
-            ]
-        ]);
-
-        $email = session('reset_email');
-        $user = User::where('email', $email)->firstOrFail();
-
-        // Update Kredensial
-        $user->password = Hash::make($request->password);
-        $user->save();
-
-        // Garbage Collection: Hapus jejak cache dan session keamanan
-        Cache::forget('otp_reset_' . $email);
-        session()->forget(['reset_email', 'step', 'otp_verified']);
-
-        return redirect()->route('login')->with('success', 'Password berhasil diperbarui! Silakan login.');
-    }
-}
-</file>
-
-<file path="app/Http/Controllers/Controller.php">
-<?php
-
-namespace App\Http\Controllers;
-
-abstract class Controller
-{
-    //
-}
-</file>
-
-<file path="app/Models/FileConversion.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class FileConversion extends Model
-{
-    use HasFactory;
-
-    /**
-     * Nama tabel di database (opsional, tapi praktik yang baik untuk kepastian absolut)
-     */
-    protected $table = 'file_conversions';
-
-    /**
-     * Atribut yang diizinkan untuk mass assignment.
-     * Ini krusial untuk mencegah kerentanan Mass-Assignment Vulnerability.
-     * * @var array<int, string>
-     */
-    protected $fillable = [
-        'original_filename',
-        'conversion_type',
-        'json_output_path',
-        'file_size_kb',
-        'status',
-        'error_log',
-    ];
-
-    /**
-     * Casting tipe data secara native agar ORM mengembalikan format yang presisi (bukan sekadar string).
-     *
-     * @var array<string, string>
-     */
-    protected $casts = [
-        'file_size_kb' => 'integer',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime',
-    ];
-}
-</file>
-
-<file path="app/Models/Language.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
-class Language extends Model
-{
-    use HasFactory;
-
-    protected $fillable = ['name', 'code', 'is_active', 'json_file', 'version_hash'];
-}
-</file>
-
-<file path="app/Models/Material.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
-
-class Material extends Model
-{
-    use HasFactory, SoftDeletes;
-
-    protected $fillable = [
-        'school_origin',
-        'title_indo',
-        'content_indo',
-        'category',         // 'literasi' atau 'numerasi'
-        'image_url',
-        'level_difficulty', // 1 (Mudah) - 3 (Sulit)
-        'language_code',    // Scope bahasa materi ini (Baru)
-        'ai_embeddings',
-        'ai_status',
-        'ai_processed_at',
-    ];
-
-    protected $casts = [
-        'content_indo' => 'array',
-        'ai_embeddings' => 'array',
-        'ai_processed_at' => 'datetime',
-    ];
-
-    // Relasi: Satu Materi punya banyak Soal
-    public function questions()
-    {
-        return $this->hasMany(Question::class);
     }
 }
 </file>
@@ -5788,27 +6413,6 @@ class Question extends Model
 }
 </file>
 
-<file path="app/Models/Region.php">
-<?php
-
-namespace App\Models;
-
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Database\Eloquent\Model;
-
-class Region extends Model
-{
-    use HasFactory;
-
-    protected $fillable = [
-        'postal_code',
-        'district_name',
-        'language_code',
-        'default_content_version',
-    ];
-}
-</file>
-
 <file path="app/Models/StudentProgress.php">
 <?php
 
@@ -5855,68 +6459,6 @@ class StudentProgress extends Model
     public function question()
     {
         return $this->belongsTo(Question::class);
-    }
-}
-</file>
-
-<file path="app/Models/User.php">
-<?php
-
-namespace App\Models;
-
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-use Illuminate\Foundation\Auth\User as Authenticatable;
-use Illuminate\Notifications\Notifiable;
-use Laravel\Sanctum\HasApiTokens;
-
-class User extends Authenticatable
-{
-    /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasApiTokens, HasFactory, Notifiable;
-
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var list<string>
-     */
-    protected $fillable = [
-        'name',
-        'username',
-        'password',
-        'email',
-        'role',
-        'school_origin',
-        'postal_code',
-        'language_code',
-        'image_url',
-    ];
-
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var list<string>
-     */
-    protected $hidden = [
-        'password',
-        'remember_token',
-    ];
-
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'password' => 'hashed',
-        ];
-    }
-
-    public function progress()
-    {
-        return $this->hasMany(StudentProgress::class);
     }
 }
 </file>
@@ -5987,468 +6529,6 @@ return [
         'model'    => env('OPENAI_MODEL', 'gpt-4o-mini'),
     ],
 ];
-</file>
-
-<file path="database/migrations/0001_01_01_000000_create_users_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('users', function (Blueprint $table) {
-            $table->id();
-            $table->string('name');
-            $table->string('username')->unique();
-            $table->string('password');
-            $table->string('email')->unique()->nullable();
-            $table->string('postal_code')->nullable();
-            $table->string('language_code')->default('tolaki mekongga');
-            $table->enum('role', ['admin', 'siswa'])->default('siswa');
-            $table->string('school_origin')->nullable();
-            $table->rememberToken();
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
-        Schema::create('password_reset_tokens', function (Blueprint $table) {
-            $table->string('email')->primary();
-            $table->string('token');
-            $table->timestamp('created_at')->nullable();
-        });
-
-        Schema::create('sessions', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->foreignId('user_id')->nullable()->index();
-            $table->string('ip_address', 45)->nullable();
-            $table->text('user_agent')->nullable();
-            $table->longText('payload');
-            $table->integer('last_activity')->index();
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('users');
-        Schema::dropIfExists('password_reset_tokens');
-        Schema::dropIfExists('sessions');
-    }
-};
-</file>
-
-<file path="database/migrations/0001_01_01_000001_create_cache_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('cache', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->mediumText('value');
-            $table->integer('expiration');
-        });
-
-        Schema::create('cache_locks', function (Blueprint $table) {
-            $table->string('key')->primary();
-            $table->string('owner');
-            $table->integer('expiration');
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('cache');
-        Schema::dropIfExists('cache_locks');
-    }
-};
-</file>
-
-<file path="database/migrations/0001_01_01_000002_create_jobs_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('queue')->index();
-            $table->longText('payload');
-            $table->unsignedTinyInteger('attempts');
-            $table->unsignedInteger('reserved_at')->nullable();
-            $table->unsignedInteger('available_at');
-            $table->unsignedInteger('created_at');
-        });
-
-        Schema::create('job_batches', function (Blueprint $table) {
-            $table->string('id')->primary();
-            $table->string('name');
-            $table->integer('total_jobs');
-            $table->integer('pending_jobs');
-            $table->integer('failed_jobs');
-            $table->longText('failed_job_ids');
-            $table->mediumText('options')->nullable();
-            $table->integer('cancelled_at')->nullable();
-            $table->integer('created_at');
-            $table->integer('finished_at')->nullable();
-        });
-
-        Schema::create('failed_jobs', function (Blueprint $table) {
-            $table->id();
-            $table->string('uuid')->unique();
-            $table->text('connection');
-            $table->text('queue');
-            $table->longText('payload');
-            $table->longText('exception');
-            $table->timestamp('failed_at')->useCurrent();
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('jobs');
-        Schema::dropIfExists('job_batches');
-        Schema::dropIfExists('failed_jobs');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_26_090237_create_materials_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-        public function up(): void
-        {
-            Schema::create('materials', function (Blueprint $table) {
-                $table->id();
-                $table->string('school_origin')->nullable();
-                $table->string('title_indo');
-                $table->json('content_indo');
-                $table->enum('category', ['literasi', 'numerasi','budaya']);
-                $table->string('language_code')->default('global');              
-                $table->string('image_url')->nullable(); // URL gambar cover/aset
-                $table->integer('level_difficulty')->default(1); // 1: Mudah, 2: Sedang, 3: Sulit
-                $table->softDeletes(); // PENTING untuk sinkronisasi (Delta Sync - PULL)
-                $table->timestamps();
-            });
-        }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('materials');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_26_090237_create_questions_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-public function up(): void
-{
-    Schema::create('questions', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('material_id')->constrained('materials')->onDelete('cascade');
-        $table->text('question_text_indo');
-        $table->json('options_json'); 
-        $table->string('correct_answer_key', 1);
-        $table->integer('difficulty_weight')->default(1);
-        $table->softDeletes();
-        $table->timestamps();
-    });
-}
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('questions');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_26_090238_create_student_progress_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-public function up(): void
-{
-    Schema::create('student_progress', function (Blueprint $table) {
-        $table->id();
-        $table->foreignId('user_id')->constrained('users')->onDelete('cascade');
-        $table->foreignId('question_id')->constrained('questions')->onDelete('cascade');
-        
-        $table->string('student_answer'); // Jawaban yang dipilih siswa
-        $table->boolean('is_correct'); // Benar/Salah
-        $table->integer('time_spent_seconds')->default(0); // Lama pengerjaan (untuk analisis)
-        
-        $table->timestamp('answered_at'); // Waktu mengerjakan di HP (bukan waktu upload ke server)
-        $table->timestamps(); // Waktu data masuk ke server
-    });
-}
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('student_progress');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_26_092050_create_regions_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-public function up(): void
-{
-    Schema::create('regions', function (Blueprint $table) {
-        $table->id();
-        $table->string('postal_code')->unique(); // Kunci utamanya
-        $table->string('district_name');
-        $table->string('language_code')->default('tolaki'); // tolaki, muna, buton
-        $table->timestamps();
-    });
-}
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('regions');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_26_100705_create_languages_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-public function up(): void
-{
-    Schema::create('languages', function (Blueprint $table) {
-        $table->id();
-        $table->string('name'); // Contoh: Bahasa Tolaki
-        $table->string('code')->unique(); // Contoh: tolaki, bugis, muna (Untuk sistem)
-        $table->string('flag_icon')->nullable(); // Opsional: URL icon bendera/simbol daerah
-        $table->boolean('is_active')->default(true); // Fitur untuk mematikan bahasa sementara
-        $table->string('json_file')->nullable();
-        $table->string('version_hash', 64)->nullable();
-        $table->timestamps();
-    });
-}
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('languages');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_27_103645_create_personal_access_tokens_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::create('personal_access_tokens', function (Blueprint $table) {
-            $table->id();
-            $table->morphs('tokenable');
-            $table->text('name');
-            $table->string('token', 64)->unique();
-            $table->text('abilities')->nullable();
-            $table->timestamp('last_used_at')->nullable();
-            $table->timestamp('expires_at')->nullable()->index();
-            $table->timestamps();
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::dropIfExists('personal_access_tokens');
-    }
-};
-</file>
-
-<file path="database/migrations/2025_12_30_052136_add_image_url_to_users_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    /**
-     * Run the migrations.
-     */
-    public function up(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-            // Tambahkan kolom image_url, boleh kosong (nullable)
-            // Simpan setelah kolom 'name' atau 'email' agar rapi
-            $table->string('image_url')->nullable()->after('name');
-        });
-    }
-
-    /**
-     * Reverse the migrations.
-     */
-    public function down(): void
-    {
-        Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn('image_url');
-        });
-    }
-};
-</file>
-
-<file path="database/migrations/2026_01_25_034727_add_ai_embeddings_to_materials_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::table('materials', function (Blueprint $table) {
-            $table->text('ai_embeddings')->nullable()->after('content_indo'); // Vector hasil TensorFlow
-            $table->enum('ai_status', ['pending', 'processing', 'ready', 'failed'])->default('pending')->after('ai_embeddings');
-            $table->timestamp('ai_processed_at')->nullable()->after('ai_status');
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::table('materials', function (Blueprint $table) {
-            $table->dropColumn(['ai_embeddings', 'ai_status', 'ai_processed_at']);
-        });
-    }
-};
-</file>
-
-<file path="database/migrations/2026_03_02_031526_create_file_conversions_table.php">
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration
-{
-    public function up(): void
-    {
-        Schema::create('file_conversions', function (Blueprint $table) {
-            $table->id();
-            $table->string('original_filename');
-            $table->string('conversion_type'); // 'kamus_excel' atau 'materi_pdf'
-            $table->string('json_output_path');
-            $table->integer('file_size_kb');
-            $table->enum('status', ['success', 'failed']);
-            $table->text('error_log')->nullable();
-            $table->timestamps();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('file_conversions');
-    }
-};
 </file>
 
 <file path="python/ai_processor.py">
@@ -7057,40 +7137,1130 @@ mysql-connector-python==8.2.0
 numpy==1.24.3
 </file>
 
-<file path="resources/views/emails/otp-reset.blade.php">
+<file path="resources/views/auth/login.blade.php">
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
-    <meta charset="utf-8">
-    <title>Kode Verifikasi NusalearnApp</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Administrator - NusaLearn</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --purple:     #7C3AED;
+            --purple-mid: #8B5CF6;
+            --purple-lt:  #EDE9FE;
+            --purple-dark:#4C1D95;
+            --black:      #0A0A0A;
+            --white:      #FFFFFF;
+            --gray-soft:  #F5F3FF;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: var(--white);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* ── PRELOADER ── */
+        #preloader {
+            position: fixed; inset: 0;
+            background: var(--white);
+            z-index: 9999;
+            display: flex; align-items: center; justify-content: center;
+            transition: opacity .6s ease, visibility .6s ease;
+        }
+        .pre-logo {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 2.5rem;
+            color: var(--black);
+            letter-spacing: -2px;
+            display: flex; align-items: center; gap: 6px;
+            animation: pre-pulse 1.2s ease-in-out infinite;
+        }
+        .pre-logo span { color: var(--purple); }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* ── DECORATIVE BG BLOBS ── */
+        .bg-scene {
+            position: fixed; inset: 0;
+            pointer-events: none; z-index: 0;
+            overflow: hidden;
+        }
+
+        /* Blob ungu besar kiri atas */
+        .blob-tl {
+            position: absolute;
+            top: -120px; left: -100px;
+            width: 520px; height: 520px;
+            background: var(--purple);
+            border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
+            opacity: .12;
+            animation: morph-a 12s ease-in-out infinite;
+        }
+        /* Blob ungu kanan bawah */
+        .blob-br {
+            position: absolute;
+            bottom: -100px; right: -80px;
+            width: 440px; height: 440px;
+            background: var(--purple-mid);
+            border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%;
+            opacity: .1;
+            animation: morph-b 14s ease-in-out infinite;
+        }
+        /* Cincin dekoratif kiri bawah */
+        .deco-ring {
+            position: absolute;
+            bottom: 80px; left: 60px;
+            width: 120px; height: 120px;
+            border: 14px solid var(--purple);
+            border-radius: 50%;
+            opacity: .18;
+            animation: spin-slow 20s linear infinite;
+        }
+        /* Squiggle / lengkungan kanan atas */
+        .deco-arc {
+            position: absolute;
+            top: 60px; right: 120px;
+            width: 90px; height: 90px;
+            border: 12px solid var(--purple);
+            border-radius: 50%;
+            clip-path: inset(0 0 50% 0);
+            opacity: .22;
+            transform: rotate(-30deg);
+        }
+        /* Titik-titik grid halus */
+        .dot-grid {
+            position: absolute; inset: 0;
+            background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+        /* Badge melayang kiri */
+        .float-badge {
+            position: absolute;
+            top: 22%; left: 6%;
+            background: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 16px;
+            box-shadow: 4px 4px 0 var(--black);
+            padding: 12px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--black);
+            display: flex; align-items: center; gap: 10px;
+            animation: float-y 4s ease-in-out infinite;
+            white-space: nowrap;
+        }
+        .float-badge .dot { width: 10px; height: 10px; background: #22C55E; border-radius: 50%; border: 2px solid var(--black); }
+        /* Badge kanan bawah */
+        .float-badge-2 {
+            position: absolute;
+            bottom: 20%; right: 6%;
+            background: var(--purple);
+            border: 2.5px solid var(--black);
+            border-radius: 16px;
+            box-shadow: 4px 4px 0 var(--black);
+            padding: 12px 20px;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 13px;
+            color: var(--white);
+            display: flex; align-items: center; gap: 8px;
+            animation: float-y 5s ease-in-out infinite .8s;
+            white-space: nowrap;
+        }
+        /* Chunky shape kanan atas */
+        .deco-chunky {
+            position: absolute;
+            top: 10%; right: 8%;
+            width: 80px; height: 80px;
+            background: var(--purple-lt);
+            border: 3px solid var(--black);
+            border-radius: 20px;
+            box-shadow: 6px 6px 0 var(--black);
+            transform: rotate(18deg);
+            animation: float-y 6s ease-in-out infinite 1.2s;
+        }
+        /* Bintang kecil */
+        .deco-star {
+            position: absolute;
+            bottom: 28%; left: 12%;
+            font-size: 48px;
+            line-height: 1;
+            animation: spin-slow 15s linear infinite reverse;
+            opacity: .35;
+        }
+
+        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
+        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
+        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+        /* ── MAIN CARD ── */
+        .login-wrap {
+            position: relative; z-index: 10;
+            width: 100%; max-width: 460px;
+            padding: 0 20px;
+        }
+
+        /* Brand header */
+        .brand {
+            text-align: center;
+            margin-bottom: 32px;
+            animation: slide-up .5s ease both;
+        }
+        .brand-icon {
+            display: inline-flex;
+            align-items: center; justify-content: center;
+            width: 68px; height: 68px;
+            background: var(--purple);
+            border: 3px solid var(--black);
+            border-radius: 20px;
+            box-shadow: 5px 5px 0 var(--black);
+            margin-bottom: 18px;
+            font-size: 28px;
+            color: var(--white);
+            transform: rotate(-6deg);
+            transition: transform .3s;
+        }
+        .brand-icon:hover { transform: rotate(0deg); }
+        .brand h1 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 2.4rem;
+            letter-spacing: -2px;
+            color: var(--black);
+            margin: 0 0 6px;
+            line-height: 1;
+        }
+        .brand h1 span { color: var(--purple); }
+        .brand p {
+            font-size: 13px;
+            font-weight: 600;
+            color: #6B7280;
+            margin: 0;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .brand p .chip {
+            background: var(--purple-lt);
+            color: var(--purple-dark);
+            font-size: 11px;
+            font-weight: 800;
+            padding: 2px 10px;
+            border-radius: 99px;
+            border: 1.5px solid var(--purple);
+            letter-spacing: .5px;
+        }
+
+        /* Card form */
+        .card {
+            background: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 28px;
+            box-shadow: 8px 8px 0 var(--black);
+            padding: 40px 40px 36px;
+            animation: slide-up .55s ease .08s both;
+        }
+        @media (max-width: 480px) { .card { padding: 28px 22px 24px; } }
+
+        .card-heading {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 900;
+            font-size: 1.55rem;
+            letter-spacing: -1px;
+            color: var(--black);
+            margin: 0 0 4px;
+        }
+        .card-sub {
+            font-size: 13px; font-weight: 500;
+            color: #9CA3AF;
+            margin: 0 0 28px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 14px;
+            font-size: 13px; font-weight: 600;
+            display: flex; align-items: flex-start; gap: 10px;
+            margin-bottom: 20px;
+            border: 2px solid;
+        }
+        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
+        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
+
+        /* Label */
+        .field-label {
+            display: block;
+            font-size: 13px; font-weight: 700;
+            color: var(--black);
+            margin-bottom: 8px;
+            letter-spacing: .2px;
+        }
+
+        /* Input */
+        .input-wrap { position: relative; margin-bottom: 18px; }
+        .input-icon {
+            position: absolute; left: 16px; top: 50%;
+            transform: translateY(-50%);
+            color: #A78BFA;
+            font-size: 15px;
+            transition: color .2s;
+            pointer-events: none;
+        }
+        .input-wrap:focus-within .input-icon { color: var(--purple); }
+
+        .field-input {
+            width: 100%;
+            background: var(--gray-soft);
+            border: 2px solid #E5E7EB;
+            border-radius: 14px;
+            padding: 14px 16px 14px 44px;
+            font-size: 14px; font-weight: 500;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: var(--black);
+            transition: border-color .2s, box-shadow .2s, background .2s;
+            outline: none;
+        }
+        .field-input::placeholder { color: #C4B5FD; }
+        .field-input:focus {
+            border-color: var(--purple);
+            background: var(--white);
+            box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple);
+        }
+
+        /* Toggle password */
+        .toggle-pw {
+            position: absolute; right: 14px; top: 50%;
+            transform: translateY(-50%);
+            background: none; border: none; cursor: pointer;
+            color: #A78BFA; font-size: 14px;
+            transition: color .2s;
+            padding: 4px;
+        }
+        .toggle-pw:hover { color: var(--purple); }
+
+        /* Remember + Forgot */
+        .form-meta {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 26px;
+        }
+        .remember-label {
+            display: flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 600; color: #374151;
+            cursor: pointer;
+        }
+        .remember-box {
+            appearance: none; width: 18px; height: 18px;
+            border: 2px solid var(--purple);
+            border-radius: 6px; background: var(--white);
+            cursor: pointer; position: relative;
+            transition: background .15s;
+        }
+        .remember-box:checked { background: var(--purple); }
+        .remember-box:checked::after {
+            content: '';
+            position: absolute; top: 2px; left: 5px;
+            width: 5px; height: 9px;
+            border: 2px solid var(--white);
+            border-top: none; border-left: none;
+            transform: rotate(45deg);
+        }
+        .forgot-link {
+            font-size: 13px; font-weight: 700;
+            color: var(--purple);
+            text-decoration: none;
+            transition: color .2s;
+        }
+        .forgot-link:hover { color: var(--purple-dark); text-decoration: underline; }
+
+        /* Submit btn */
+        .btn-submit {
+            width: 100%;
+            background: var(--purple);
+            color: var(--white);
+            border: 2.5px solid var(--black);
+            border-radius: 14px;
+            padding: 15px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px; font-weight: 800;
+            letter-spacing: .3px;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 10px;
+            box-shadow: 4px 4px 0 var(--black);
+            transition: transform .15s, box-shadow .15s, background .15s;
+            outline: none;
+        }
+        .btn-submit:hover {
+            background: var(--purple-dark);
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0 var(--black);
+        }
+        .btn-submit:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0 var(--black);
+        }
+
+        /* Register link */
+        .register-row {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .register-link {
+            font-size: 13px; font-weight: 700;
+            color: var(--purple);
+            text-decoration: none;
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px;
+            border: 2px solid var(--purple-lt);
+            border-radius: 99px;
+            background: var(--purple-lt);
+            transition: all .2s;
+        }
+        .register-link:hover {
+            background: var(--purple);
+            color: var(--white);
+            border-color: var(--purple);
+            transform: translateY(-1px);
+        }
+
+        /* Divider */
+        .divider {
+            border: none;
+            border-top: 2px dashed #E5E7EB;
+            margin: 24px 0 20px;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            margin-top: 28px;
+            font-size: 12px; font-weight: 500;
+            color: #9CA3AF;
+            animation: slide-up .6s ease .18s both;
+        }
+
+        @keyframes slide-up {
+            from { opacity: 0; transform: translateY(22px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+    </style>
 </head>
-<body style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 40px 0;">
-    <div style="max-w-width: 500px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-        
-        <div style="background-color: #059669; padding: 30px 20px; text-align: center;">
-            <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 1px;">Nusaleran<span style="color: #a7f3d0;">App</span></h1>
-            <p style="color: #d1fae5; margin: 5px 0 0 0; font-size: 14px;">Enterprise Security System</p>
-        </div>
 
-        <div style="padding: 30px 40px; color: #334155;">
-            <h2 style="font-size: 18px; margin-top: 0;">Permintaan Reset Kredensial</h2>
-            <p style="font-size: 15px; line-height: 1.6; color: #475569;">
-                Halo! Saya developer <strong>Nusalearn</strong>, ini code verifikasi mu untuk melakukan reset password pada portal Administrator NusalearnApp.
-            </p>
-            
-            <div style="background-color: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin: 25px 0;">
-                <span style="font-family: monospace; font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a;">{{ $otp }}</span>
-            </div>
-            
-            <p style="font-size: 13px; color: #ef4444; background-color: #fef2f2; padding: 10px; border-radius: 6px;">
-                <strong>Peringatan Keamanan:</strong> Kode ini hanya berlaku selama 10 Menit. Jangan berikan kode ini kepada siapapun, termasuk pihak Nusalearn.
-            </p>
-        </div>
+<body>
 
-        <div style="background-color: #f8fafc; padding: 20px; text-align: center; border-top: 1px solid #e2e8f0;">
-            <p style="font-size: 12px; color: #94a3b8; margin: 0;">&copy; {{ date('Y') }} Nusalearn Learning Management System.<br>Generated automatically by System.</p>
+    <!-- ── PRELOADER ── -->
+    <div id="preloader">
+        <div class="pre-logo">
+            Nusa<span>Learn</span>
+            <span style="font-size:1.6rem; margin-left:4px;">✦</span>
         </div>
     </div>
+
+    <!-- ── BACKGROUND SCENE ── -->
+    <div class="bg-scene">
+        <div class="dot-grid"></div>
+        <div class="blob-tl"></div>
+        <div class="blob-br"></div>
+        <div class="deco-ring"></div>
+        <div class="deco-arc"></div>
+        <div class="deco-chunky"></div>
+
+        <!-- Badge melayang kiri: status server -->
+        <div class="float-badge">
+            <div class="dot"></div>
+            Server Online
+        </div>
+
+        <!-- Badge melayang kanan: versi -->
+        <div class="float-badge-2">
+            <i class="fa-solid fa-microchip" style="font-size:14px"></i>
+            AI Powered v2.0
+        </div>
+
+        <!-- Bintang dekoratif -->
+        <div class="deco-star" style="color: var(--purple);">✦</div>
+    </div>
+
+    <!-- ── LOGIN FORM ── -->
+    <div class="login-wrap">
+
+        <!-- Brand -->
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-graduation-cap"></i>
+            </div>
+            <h1>Nusa<span>Learn</span></h1>
+            <p>
+                Administrator Gateway
+                <span class="chip">ADMIN</span>
+            </p>
+        </div>
+
+        <!-- Card -->
+        <div class="card">
+            <p class="card-heading">Selamat datang! 👋</p>
+            <p class="card-sub">Masuk untuk mengakses panel administrator.</p>
+
+            {{-- Alert Sukses --}}
+            @if (session('success'))
+            <div class="alert alert-success">
+                <i class="fa-solid fa-circle-check" style="margin-top:1px"></i>
+                <span>{{ session('success') }}</span>
+            </div>
+            @endif
+
+            {{-- Alert Error --}}
+            @if ($errors->any())
+            <div class="alert alert-error">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i>
+                <div>
+                    <strong style="display:block; margin-bottom:2px;">Otorisasi Ditolak!</strong>
+                    <span style="font-weight:500">{{ $errors->first() }}</span>
+                </div>
+            </div>
+            @endif
+
+            <form method="POST" action="{{ route('login.post') }}">
+                @csrf
+
+                <!-- Username -->
+                <label class="field-label" for="username">Username Akses</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-user-shield input-icon"></i>
+                    <input class="field-input" id="username" type="text"
+                           name="username" value="{{ old('username') }}"
+                           required autofocus placeholder="Masukkan username...">
+                </div>
+
+                <!-- Password -->
+                <label class="field-label" for="password">Kunci Keamanan</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-key input-icon"></i>
+                    <input class="field-input" id="password" type="password"
+                           name="password" required
+                           placeholder="••••••••" style="padding-right: 46px;">
+                    <button type="button" class="toggle-pw"
+                            onclick="togglePassword('password', 'eye-icon')">
+                        <i id="eye-icon" class="fa-regular fa-eye"></i>
+                    </button>
+                </div>
+
+                <!-- Meta row -->
+                <div class="form-meta">
+                    <label class="remember-label">
+                        <input type="checkbox" name="remember" class="remember-box">
+                        Ingat sesi saya
+                    </label>
+                    <a href="{{ route('password.recovery') }}" class="forgot-link">
+                        Lupa kata sandi?
+                    </a>
+                </div>
+
+                <!-- Submit -->
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-right-to-bracket"></i>
+                    Masuk Sistem
+                </button>
+
+                <hr class="divider">
+
+                <!-- Register -->
+                <div class="register-row">
+                    <a href="{{ route('admin.register') }}" class="register-link">
+                        <i class="fa-solid fa-user-plus"></i>
+                        Daftarkan Administrator Baru
+                    </a>
+                </div>
+
+            </form>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            &copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.
+        </div>
+
+    </div>
+
+    <script>
+        // Toggle password visibility
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon  = document.getElementById(iconId);
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.replace('fa-eye', 'fa-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.replace('fa-eye-slash', 'fa-eye');
+            }
+        }
+
+        // Preloader
+        window.addEventListener('load', function () {
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
+        });
+    </script>
+</body>
+</html>
+</file>
+
+<file path="resources/views/auth/password-recovery.blade.php">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Pemulihan Akses - NusaLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --purple:     #7C3AED;
+            --purple-mid: #8B5CF6;
+            --purple-lt:  #EDE9FE;
+            --purple-dark:#4C1D95;
+            --black:      #0A0A0A;
+            --white:      #FFFFFF;
+            --gray-soft:  #F5F3FF;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            background: var(--white);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 24px 0;
+        }
+
+        /* PRELOADER */
+        #preloader { position: fixed; inset: 0; background: var(--white); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .6s ease, visibility .6s ease; }
+        .pre-logo { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--black); letter-spacing: -2px; display: flex; align-items: center; gap: 6px; animation: pre-pulse 1.2s ease-in-out infinite; }
+        .pre-logo span { color: var(--purple); }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* BG SCENE */
+        .bg-scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .blob-tl { position: absolute; top: -120px; left: -100px; width: 520px; height: 520px; background: var(--purple); border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; opacity: .10; animation: morph-a 12s ease-in-out infinite; }
+        .blob-br { position: absolute; bottom: -100px; right: -80px; width: 440px; height: 440px; background: var(--purple-mid); border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%; opacity: .08; animation: morph-b 14s ease-in-out infinite; }
+        .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px); background-size: 28px 28px; }
+        .deco-ring { position: absolute; bottom: 80px; left: 60px; width: 100px; height: 100px; border: 12px solid var(--purple); border-radius: 50%; opacity: .15; animation: spin-slow 20s linear infinite; }
+        .deco-chunky { position: absolute; top: 8%; right: 7%; width: 70px; height: 70px; background: var(--purple-lt); border: 3px solid var(--black); border-radius: 18px; box-shadow: 5px 5px 0 var(--black); transform: rotate(18deg); animation: float-y 6s ease-in-out infinite 1s; }
+        .deco-star { position: absolute; bottom: 25%; left: 10%; font-size: 44px; line-height: 1; animation: spin-slow 15s linear infinite reverse; opacity: .25; color: var(--purple); }
+
+        /* Step badge melayang */
+        .float-step { position: absolute; top: 18%; left: 6%; background: var(--white); border: 2.5px solid var(--black); border-radius: 16px; box-shadow: 4px 4px 0 var(--black); padding: 10px 18px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px; color: var(--black); display: flex; align-items: center; gap: 8px; animation: float-y 4s ease-in-out infinite; white-space: nowrap; }
+        .float-step i { color: var(--purple); font-size: 14px; }
+
+        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
+        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
+        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes slide-up { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+
+        /* WRAP */
+        .recovery-wrap { position: relative; z-index: 10; width: 100%; max-width: 460px; padding: 0 20px; }
+
+        /* BRAND */
+        .brand { text-align: center; margin-bottom: 28px; animation: slide-up .5s ease both; }
+        .brand-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: var(--purple); border: 3px solid var(--black); border-radius: 20px; box-shadow: 5px 5px 0 var(--black); margin-bottom: 14px; font-size: 26px; color: var(--white); transform: rotate(-6deg); transition: transform .3s; }
+        .brand-icon:hover { transform: rotate(0deg); }
+        .brand h1 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; letter-spacing: -2px; color: var(--black); margin: 0 0 6px; line-height: 1; }
+        .brand h1 span { color: var(--purple); }
+        .brand p { font-size: 13px; font-weight: 600; color: #6B7280; margin: 0; }
+
+        /* CARD */
+        .card { background: var(--white); border: 2.5px solid var(--black); border-radius: 28px; box-shadow: 8px 8px 0 var(--black); padding: 36px 36px 32px; animation: slide-up .55s ease .08s both; }
+        @media (max-width: 480px) { .card { padding: 24px 20px; } }
+
+        /* STEP INDICATOR */
+        .step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
+        .step-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
+        .step-dot { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--black); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 13px; background: var(--white); color: #9CA3AF; box-shadow: 2px 2px 0 var(--black); transition: all .3s; }
+        .step-dot.active { background: var(--purple); color: var(--white); border-color: var(--purple); box-shadow: 3px 3px 0 var(--black); }
+        .step-dot.done { background: #22C55E; color: var(--white); border-color: #16A34A; }
+        .step-label { font-size: 10px; font-weight: 700; color: #9CA3AF; margin-top: 4px; text-align: center; }
+        .step-label.active { color: var(--purple); }
+        .step-line { flex: 1; height: 2.5px; background: #E5E7EB; margin: 0 4px; margin-bottom: 18px; border-radius: 99px; transition: background .3s; }
+        .step-line.done { background: var(--purple); }
+
+        /* SECTION HEADING */
+        .section-head { margin-bottom: 20px; }
+        .section-head h2 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 1.4rem; letter-spacing: -0.5px; color: var(--black); margin: 0 0 4px; }
+        .section-head p { font-size: 13px; font-weight: 500; color: #9CA3AF; margin: 0; }
+
+        /* ALERT */
+        .alert { padding: 12px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; border: 2px solid; }
+        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
+        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
+
+        /* LABEL & INPUT */
+        .field-label { display: block; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 8px; }
+        .input-wrap { position: relative; margin-bottom: 18px; }
+        .input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; font-size: 15px; transition: color .2s; pointer-events: none; }
+        .input-wrap:focus-within .input-icon { color: var(--purple); }
+        .field-input { width: 100%; background: var(--gray-soft); border: 2px solid #E5E7EB; border-radius: 14px; padding: 14px 16px 14px 44px; font-size: 14px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--black); transition: border-color .2s, box-shadow .2s, background .2s; outline: none; }
+        .field-input::placeholder { color: #C4B5FD; }
+        .field-input:focus { border-color: var(--purple); background: var(--white); box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple); }
+        .toggle-pw { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A78BFA; font-size: 14px; transition: color .2s; padding: 4px; }
+        .toggle-pw:hover { color: var(--purple); }
+
+        /* OTP INPUT */
+        .otp-input { width: 100%; background: var(--gray-soft); border: 2.5px solid var(--black); border-radius: 14px; padding: 18px 16px; font-size: 2rem; font-weight: 900; font-family: 'Outfit', monospace; letter-spacing: .6em; text-align: center; color: var(--purple); outline: none; box-shadow: 3px 3px 0 var(--black); transition: box-shadow .2s, border-color .2s; }
+        .otp-input:focus { border-color: var(--purple); box-shadow: 5px 5px 0 var(--black); }
+        .otp-input::placeholder { color: #DDD6FE; letter-spacing: .5em; }
+
+        /* OTP ICON BOX */
+        .otp-icon { width: 72px; height: 72px; background: var(--purple-lt); border: 2.5px solid var(--black); border-radius: 20px; box-shadow: 4px 4px 0 var(--black); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; color: var(--purple); }
+
+        /* WARNING BOX */
+        .warn-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #92400E; margin-bottom: 20px; }
+
+        /* BTN */
+        .btn-submit { width: 100%; background: var(--purple); color: var(--white); border: 2.5px solid var(--black); border-radius: 14px; padding: 15px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 4px 4px 0 var(--black); transition: transform .15s, box-shadow .15s, background .15s; outline: none; }
+        .btn-submit:hover { background: var(--purple-dark); transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--black); }
+        .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--black); }
+
+        /* BACK LINK */
+        .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #6B7280; text-decoration: none; padding: 8px 16px; border: 2px solid #E5E7EB; border-radius: 99px; transition: all .2s; margin-top: 20px; }
+        .back-link:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-lt); }
+
+        /* FOOTER */
+        .footer { text-align: center; margin-top: 24px; font-size: 12px; font-weight: 500; color: #9CA3AF; animation: slide-up .6s ease .18s both; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="pre-logo">Nusa<span>Learn</span> <span style="font-size:1.6rem;margin-left:4px">✦</span></div>
+    </div>
+
+    <div class="bg-scene">
+        <div class="dot-grid"></div>
+        <div class="blob-tl"></div>
+        <div class="blob-br"></div>
+        <div class="deco-ring"></div>
+        <div class="deco-chunky"></div>
+        <div class="deco-star">✦</div>
+        <div class="float-step">
+            <i class="fa-solid fa-shield-halved"></i> Pemulihan Aman
+        </div>
+    </div>
+
+    <div class="recovery-wrap">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
+            <h1>Nusa<span>Learn</span></h1>
+            <p>Pemulihan Akses Administrator</p>
+        </div>
+
+        <div class="card">
+
+            {{-- Step Indicator --}}
+            <div class="step-bar">
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'request_email' ? 'active' : 'done' }}">
+                        {{ $step === 'request_email' ? '1' : '✓' }}
+                    </div>
+                    <div class="step-label {{ $step === 'request_email' ? 'active' : '' }}">Email</div>
+                </div>
+                <div class="step-line {{ in_array($step, ['verify_otp','reset_password']) ? 'done' : '' }}"></div>
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'verify_otp' ? 'active' : ($step === 'reset_password' ? 'done' : '') }}">
+                        {{ $step === 'reset_password' ? '✓' : '2' }}
+                    </div>
+                    <div class="step-label {{ $step === 'verify_otp' ? 'active' : '' }}">Kode OTP</div>
+                </div>
+                <div class="step-line {{ $step === 'reset_password' ? 'done' : '' }}"></div>
+                <div class="step-item">
+                    <div class="step-dot {{ $step === 'reset_password' ? 'active' : '' }}">3</div>
+                    <div class="step-label {{ $step === 'reset_password' ? 'active' : '' }}">Password Baru</div>
+                </div>
+            </div>
+
+            @if (session('success'))
+            <div class="alert alert-success"><i class="fa-solid fa-circle-check" style="margin-top:1px"></i><span>{{ session('success') }}</span></div>
+            @endif
+            @if ($errors->any())
+            <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i><span>{{ $errors->first() }}</span></div>
+            @endif
+
+            {{-- STEP 1: Request Email --}}
+            @if($step === 'request_email')
+            <div class="section-head">
+                <h2>Masukkan Email Anda</h2>
+                <p>Kami akan mengirimkan kode verifikasi 6 digit ke email terdaftar.</p>
+            </div>
+            <form method="POST" action="{{ route('password.sendOtp') }}">
+                @csrf
+                <label class="field-label">Alamat Email Valid</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-envelope input-icon"></i>
+                    <input class="field-input" type="email" name="email" required autofocus placeholder="admin@sekolah.sch.id">
+                </div>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP
+                </button>
+            </form>
+
+            {{-- STEP 2: Verify OTP --}}
+            @elseif($step === 'verify_otp')
+            <div class="otp-icon"><i class="fa-solid fa-envelope-open-text"></i></div>
+            <div class="section-head" style="text-align:center">
+                <h2>Cek Email Anda</h2>
+                <p>Kode OTP 6 digit dikirim ke <strong style="color:var(--purple)">{{ session('reset_email') }}</strong></p>
+            </div>
+            <form method="POST" action="{{ route('password.verifyOtp') }}">
+                @csrf
+                <div style="margin-bottom:20px">
+                    <input class="otp-input" type="text" name="otp" required maxlength="6" autofocus placeholder="——————" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
+                </div>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-check-double"></i> Verifikasi Kode
+                </button>
+            </form>
+
+            {{-- STEP 3: Reset Password --}}
+            @elseif($step === 'reset_password')
+            <div class="section-head">
+                <h2>Buat Password Baru</h2>
+                <p>Buat password yang kuat untuk akun Anda.</p>
+            </div>
+            <div class="warn-box">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                Minimal 8 karakter, mengandung huruf besar, kecil, angka & simbol.
+            </div>
+            <form method="POST" action="{{ route('password.resetPassword') }}">
+                @csrf
+                <label class="field-label">Password Baru</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-key input-icon"></i>
+                    <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
+                </div>
+                <label class="field-label">Konfirmasi Password Baru</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-lock input-icon"></i>
+                    <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
+                </div>
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-rotate-right"></i> Update Password & Login
+                </button>
+            </form>
+            @endif
+
+            <div style="text-align:center">
+                <a href="{{ route('login') }}" class="back-link">
+                    <i class="fa-solid fa-arrow-left"></i> Kembali ke Login
+                </a>
+            </div>
+        </div>
+
+        <div class="footer">&copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.</div>
+    </div>
+
+    <script>
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon  = document.getElementById(iconId);
+            if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
+            else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
+        }
+        window.addEventListener('load', function() {
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
+        });
+    </script>
+</body>
+</html>
+</file>
+
+<file path="resources/views/auth/register.blade.php">
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Register Administrator - NusaLearn</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --purple:     #7C3AED;
+            --purple-mid: #8B5CF6;
+            --purple-lt:  #EDE9FE;
+            --purple-dark:#4C1D95;
+            --black:      #0A0A0A;
+            --white:      #FFFFFF;
+            --gray-soft:  #F5F3FF;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh;
+            background: var(--white);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            overflow-x: hidden;
+            display: flex; align-items: center; justify-content: center;
+            position: relative; padding: 32px 0;
+        }
+
+        /* PRELOADER */
+        #preloader { position: fixed; inset: 0; background: var(--white); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .6s ease, visibility .6s ease; }
+        .pre-logo { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--black); letter-spacing: -2px; display: flex; align-items: center; gap: 6px; animation: pre-pulse 1.2s ease-in-out infinite; }
+        .pre-logo span { color: var(--purple); }
+        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+        /* BG SCENE */
+        .bg-scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+        .blob-tl { position: absolute; top: -120px; left: -100px; width: 520px; height: 520px; background: var(--purple); border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; opacity: .09; animation: morph-a 12s ease-in-out infinite; }
+        .blob-br { position: absolute; bottom: -100px; right: -80px; width: 440px; height: 440px; background: var(--purple-mid); border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%; opacity: .07; animation: morph-b 14s ease-in-out infinite; }
+        .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px); background-size: 28px 28px; }
+        .deco-ring { position: absolute; bottom: 60px; right: 80px; width: 90px; height: 90px; border: 11px solid var(--purple); border-radius: 50%; opacity: .14; animation: spin-slow 20s linear infinite; }
+        .deco-tri { position: absolute; top: 10%; left: 5%; width: 0; height: 0; border-left: 32px solid transparent; border-right: 32px solid transparent; border-bottom: 55px solid var(--purple-lt); opacity: .7; animation: float-y 5s ease-in-out infinite; filter: drop-shadow(3px 3px 0 var(--black)); }
+        .deco-star { position: absolute; top: 30%; right: 6%; font-size: 42px; line-height: 1; animation: spin-slow 15s linear infinite reverse; opacity: .22; color: var(--purple); }
+
+        /* Badge akses kode */
+        .float-badge { position: absolute; bottom: 22%; left: 5%; background: var(--purple); border: 2.5px solid var(--black); border-radius: 16px; box-shadow: 4px 4px 0 var(--black); padding: 10px 18px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px; color: var(--white); display: flex; align-items: center; gap: 8px; animation: float-y 4.5s ease-in-out infinite .5s; white-space: nowrap; }
+
+        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
+        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
+        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
+        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        @keyframes slide-up { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
+
+        /* WRAP */
+        .register-wrap { position: relative; z-index: 10; width: 100%; max-width: 640px; padding: 0 20px; }
+
+        /* BRAND */
+        .brand { text-align: center; margin-bottom: 28px; animation: slide-up .5s ease both; }
+        .brand-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: var(--purple); border: 3px solid var(--black); border-radius: 20px; box-shadow: 5px 5px 0 var(--black); margin-bottom: 14px; font-size: 26px; color: var(--white); transform: rotate(-6deg); transition: transform .3s; }
+        .brand-icon:hover { transform: rotate(0deg); }
+        .brand h1 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; letter-spacing: -2px; color: var(--black); margin: 0 0 6px; line-height: 1; }
+        .brand h1 span { color: var(--purple); }
+        .brand p { font-size: 13px; font-weight: 600; color: #6B7280; margin: 0; }
+
+        /* CARD */
+        .card { background: var(--white); border: 2.5px solid var(--black); border-radius: 28px; box-shadow: 8px 8px 0 var(--black); padding: 36px 36px 32px; animation: slide-up .55s ease .08s both; }
+        @media (max-width: 560px) { .card { padding: 22px 18px; } }
+
+        .card-heading { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 1.45rem; letter-spacing: -0.5px; color: var(--black); margin: 0 0 4px; }
+        .card-sub { font-size: 13px; font-weight: 500; color: #9CA3AF; margin: 0 0 24px; }
+
+        /* ACCESS CODE BOX */
+        .access-box { background: var(--purple-lt); border: 2.5px solid var(--purple); border-radius: 18px; padding: 20px; margin-bottom: 24px; box-shadow: 3px 3px 0 var(--purple-dark); }
+        .access-box-label { font-size: 13px; font-weight: 800; color: var(--purple-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+        .access-note { font-size: 11px; font-weight: 600; color: var(--purple); margin-top: 8px; }
+
+        /* DIVIDER */
+        .section-divider { border: none; border-top: 2px dashed #E5E7EB; margin: 20px 0; }
+        .section-title { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+        .section-title::after { content:''; flex:1; height:2px; background:#F3F4F6; border-radius:99px; }
+
+        /* GRID */
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+        @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
+
+        /* LABEL & INPUT */
+        .field-label { display: block; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 7px; }
+        .input-wrap { position: relative; }
+        .input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; font-size: 14px; transition: color .2s; pointer-events: none; }
+        .input-wrap:focus-within .input-icon { color: var(--purple); }
+        .field-input { width: 100%; background: var(--gray-soft); border: 2px solid #E5E7EB; border-radius: 12px; padding: 12px 16px 12px 42px; font-size: 13px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--black); transition: border-color .2s, box-shadow .2s, background .2s; outline: none; }
+        .field-input::placeholder { color: #C4B5FD; }
+        .field-input:focus { border-color: var(--purple); background: var(--white); box-shadow: 0 0 0 3px #7C3AED15, 3px 3px 0 var(--purple); }
+        .toggle-pw { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A78BFA; font-size: 13px; transition: color .2s; padding: 4px; }
+        .toggle-pw:hover { color: var(--purple); }
+        .field-group { margin-bottom: 0; }
+
+        /* ERROR ALERT */
+        .alert-error { background: #FFF1F2; border: 2px solid #F43F5E; border-radius: 14px; padding: 14px 16px; font-size: 13px; font-weight: 600; color: #BE123C; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
+        .alert-error ul { margin: 4px 0 0; padding-left: 16px; font-weight: 500; font-size: 12px; }
+
+        /* WARN BOX */
+        .warn-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #92400E; margin-bottom: 14px; }
+
+        /* BTN */
+        .btn-submit { width: 100%; background: var(--purple); color: var(--white); border: 2.5px solid var(--black); border-radius: 14px; padding: 16px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 4px 4px 0 var(--black); transition: transform .15s, box-shadow .15s, background .15s; outline: none; margin-top: 24px; }
+        .btn-submit:hover { background: var(--purple-dark); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--black); }
+        .btn-submit:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--black); }
+
+        /* LOGIN LINK */
+        .login-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--purple); text-decoration: none; padding: 8px 18px; border: 2px solid var(--purple-lt); border-radius: 99px; background: var(--purple-lt); transition: all .2s; }
+        .login-link:hover { background: var(--purple); color: var(--white); border-color: var(--purple); transform: translateY(-1px); }
+
+        /* FOOTER */
+        .footer { text-align: center; margin-top: 24px; font-size: 12px; font-weight: 500; color: #9CA3AF; animation: slide-up .6s ease .18s both; }
+    </style>
+</head>
+<body>
+
+    <div id="preloader">
+        <div class="pre-logo">Nusa<span>Learn</span> <span style="font-size:1.6rem;margin-left:4px">✦</span></div>
+    </div>
+
+    <div class="bg-scene">
+        <div class="dot-grid"></div>
+        <div class="blob-tl"></div>
+        <div class="blob-br"></div>
+        <div class="deco-ring"></div>
+        <div class="deco-tri"></div>
+        <div class="deco-star">✦</div>
+        <div class="float-badge">
+            <i class="fa-solid fa-lock" style="font-size:13px"></i>
+            Akses Terbatas
+        </div>
+    </div>
+
+    <div class="register-wrap">
+        <div class="brand">
+            <div class="brand-icon"><i class="fa-solid fa-user-plus"></i></div>
+            <h1>Nusa<span>Learn</span></h1>
+            <p>Registrasi Panel Administrator</p>
+        </div>
+
+        <div class="card">
+            <p class="card-heading">Buat Akun Admin Baru 🔐</p>
+            <p class="card-sub">Isi semua kolom di bawah untuk mendaftar sebagai administrator.</p>
+
+            @if ($errors->any())
+            <div class="alert-error">
+                <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;flex-shrink:0"></i>
+                <div>
+                    <strong>Registrasi Gagal!</strong>
+                    <ul>
+                        @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
+                </div>
+            </div>
+            @endif
+
+            <form method="POST" action="{{ route('admin.register.post') }}">
+                @csrf
+
+                {{-- Access Code --}}
+                <div class="access-box">
+                    <div class="access-box-label">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        Kode Akses Pendaftaran <span style="color:#F43F5E">*</span>
+                    </div>
+                    <div style="position:relative">
+                        <i class="fa-solid fa-shield-halved" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#A78BFA;font-size:14px;pointer-events:none"></i>
+                        <input style="width:100%;background:#fff;border:2px solid var(--purple);border-radius:12px;padding:12px 16px 12px 42px;font-size:13px;font-weight:700;font-family:'Outfit',monospace;color:var(--black);letter-spacing:3px;text-transform:uppercase;outline:none;transition:box-shadow .2s" 
+                               type="text" name="access_code" id="access_code" required placeholder="MASUKKAN TOKEN AKSES"
+                               onfocus="this.style.boxShadow='3px 3px 0 var(--purple-dark)'" 
+                               onblur="this.style.boxShadow='none'">
+                    </div>
+                    <p class="access-note"><i class="fa-solid fa-circle-info"></i> Registrasi ini terbatas. Masukkan kode akses institusi yang valid.</p>
+                </div>
+
+                {{-- Identitas --}}
+                <div class="section-title"><i class="fa-solid fa-id-card" style="color:var(--purple)"></i> Identitas Administrator</div>
+                <div class="form-grid" style="margin-bottom:14px">
+                    <div class="field-group">
+                        <label class="field-label">Nama Lengkap</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-id-card input-icon"></i>
+                            <input class="field-input" type="text" name="name" value="{{ old('name') }}" required autofocus placeholder="Contoh: Budi Santoso">
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Username Akses</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-user-shield input-icon"></i>
+                            <input class="field-input" type="text" name="username" value="{{ old('username') }}" required placeholder="Contoh: admin_smk1">
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Asal Sekolah / Instansi</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-school input-icon"></i>
+                            <input class="field-input" type="text" name="school_origin" value="{{ old('school_origin') }}" required placeholder="Contoh: SMKN 1 Kendari">
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Alamat Email Valid</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-envelope input-icon"></i>
+                            <input class="field-input" type="email" name="email" value="{{ old('email') }}" required placeholder="admin@sekolah.sch.id">
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Password --}}
+                <hr class="section-divider">
+                <div class="section-title"><i class="fa-solid fa-key" style="color:var(--purple)"></i> Keamanan Akun</div>
+                <div class="warn-box"><i class="fa-solid fa-circle-exclamation"></i> Minimal 8 karakter, mengandung huruf besar, kecil, angka & simbol (@, #, dsb).</div>
+                <div class="form-grid">
+                    <div class="field-group">
+                        <label class="field-label">Kata Sandi Baru</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-key input-icon"></i>
+                            <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:42px">
+                            <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
+                        </div>
+                    </div>
+                    <div class="field-group">
+                        <label class="field-label">Konfirmasi Kata Sandi</label>
+                        <div class="input-wrap">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:42px">
+                            <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn-submit" type="submit">
+                    <i class="fa-solid fa-user-plus"></i> Selesaikan Registrasi
+                </button>
+
+                <div style="text-align:center;margin-top:20px">
+                    <a href="{{ route('login') }}" class="login-link">
+                        <i class="fa-solid fa-arrow-left"></i> Sudah punya akun? Login
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="footer">&copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.</div>
+    </div>
+
+    <script>
+        function togglePassword(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon  = document.getElementById(iconId);
+            if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
+            else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
+        }
+        window.addEventListener('load', function() {
+            const pre = document.getElementById('preloader');
+            pre.style.opacity = '0';
+            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
+        });
+    </script>
 </body>
 </html>
 </file>
@@ -7171,17 +8341,6 @@ Route::middleware('auth:sanctum')->group(function () {
 });
 </file>
 
-<file path="routes/console.php">
-<?php
-
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
-
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
-</file>
-
 <file path="routes/web.php">
 <?php
 // routes/web.php
@@ -7252,6 +8411,7 @@ Route::middleware('auth')->prefix('admin')->group(function () {
     Route::resource('questions', QuestionController::class);
     // Di dalam grup route admin/teacher Anda
     Route::post('/questions/manual', [QuestionController::class, 'storeManual'])->name('questions.manual.store');
+    Route::post('/questions/generate-explanation', [QuestionController::class, 'generateExplanationApi'])->name('questions.generate-explanation');
 
     // ── Asset Library ──────────────────────────────────────────────────
     Route::prefix('assets')->name('assets.')->group(function () {
@@ -11768,11 +12928,16 @@ class AppServiceProvider extends ServiceProvider
                         </div>
 
                         {{-- Penjelasan (semua template) --}}
-                        <div>
-                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Penjelasan Jawaban (Opsional)</label>
-                            <textarea name="explanation" rows="2"
+                        <div class="mb-4">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="text-xs font-black text-black dark:text-white uppercase tracking-widest">Penjelasan Jawaban (Opsional)</label>
+                                <button type="button" onclick="generateManualExplanation()" class="text-xs font-bold text-p hover:text-p-dark flex items-center gap-1 border-2 border-black px-2 py-1 rounded-lg bg-neo-cyan shadow-neo-sm hover:translate-y-px transition-all">
+                                    <i class="fa-solid fa-robot"></i> Buat dengan AI
+                                </button>
+                            </div>
+                            <textarea name="explanation" id="manual-explanation-text" rows="2"
                                       class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y"
-                                      placeholder="Jelaskan mengapa jawaban tersebut benar..."></textarea>
+                                      placeholder="Tulis penjelasan manual, atau klik tombol 'Buat dengan AI' di atas..."></textarea>
                         </div>
 
                         {{-- FIX #6: Tombol simpan ada di DALAM form, DALAM scroll body --}}
@@ -12381,6 +13546,44 @@ class AppServiceProvider extends ServiceProvider
     function previewQuestionData(data) {
         document.getElementById('json-view-content').textContent = JSON.stringify(data, null, 2);
         toggleModal('modal-json-view');
+    }
+
+    async function generateManualExplanation() {
+        const questionText = document.getElementById('main-question-text').value;
+        const textArea = document.getElementById('manual-explanation-text');
+        
+        if (!questionText.trim()) {
+            showCustomAlert("Tulis Teks Pertanyaan utamanya terlebih dahulu sebelum menggunakan AI.");
+            return;
+        }
+
+        textArea.value = "AI sedang berpikir...";
+        textArea.disabled = true;
+
+        try {
+            const res = await fetch('{{ route("questions.generate-explanation") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify({ question: questionText })
+            });
+            const data = await res.json();
+            
+            if (data.status === 'success') {
+                textArea.value = data.explanation;
+            } else {
+                textArea.value = "";
+                showCustomAlert("Gagal: " + data.message);
+            }
+        } catch (e) {
+            textArea.value = "";
+            showCustomAlert("Kesalahan jaringan.");
+        } finally {
+            textArea.disabled = false;
+        }
     }
     </script>
 </body>
@@ -13942,1134 +15145,6 @@ class AppServiceProvider extends ServiceProvider
                 }).join('');
             }
         }
-    </script>
-</body>
-</html>
-</file>
-
-<file path="resources/views/auth/login.blade.php">
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - NusaLearn</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
-    <style>
-        :root {
-            --purple:     #7C3AED;
-            --purple-mid: #8B5CF6;
-            --purple-lt:  #EDE9FE;
-            --purple-dark:#4C1D95;
-            --black:      #0A0A0A;
-            --white:      #FFFFFF;
-            --gray-soft:  #F5F3FF;
-        }
-
-        * { box-sizing: border-box; }
-
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: var(--white);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow-x: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-        }
-
-        /* ── PRELOADER ── */
-        #preloader {
-            position: fixed; inset: 0;
-            background: var(--white);
-            z-index: 9999;
-            display: flex; align-items: center; justify-content: center;
-            transition: opacity .6s ease, visibility .6s ease;
-        }
-        .pre-logo {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 900;
-            font-size: 2.5rem;
-            color: var(--black);
-            letter-spacing: -2px;
-            display: flex; align-items: center; gap: 6px;
-            animation: pre-pulse 1.2s ease-in-out infinite;
-        }
-        .pre-logo span { color: var(--purple); }
-        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-        /* ── DECORATIVE BG BLOBS ── */
-        .bg-scene {
-            position: fixed; inset: 0;
-            pointer-events: none; z-index: 0;
-            overflow: hidden;
-        }
-
-        /* Blob ungu besar kiri atas */
-        .blob-tl {
-            position: absolute;
-            top: -120px; left: -100px;
-            width: 520px; height: 520px;
-            background: var(--purple);
-            border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%;
-            opacity: .12;
-            animation: morph-a 12s ease-in-out infinite;
-        }
-        /* Blob ungu kanan bawah */
-        .blob-br {
-            position: absolute;
-            bottom: -100px; right: -80px;
-            width: 440px; height: 440px;
-            background: var(--purple-mid);
-            border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%;
-            opacity: .1;
-            animation: morph-b 14s ease-in-out infinite;
-        }
-        /* Cincin dekoratif kiri bawah */
-        .deco-ring {
-            position: absolute;
-            bottom: 80px; left: 60px;
-            width: 120px; height: 120px;
-            border: 14px solid var(--purple);
-            border-radius: 50%;
-            opacity: .18;
-            animation: spin-slow 20s linear infinite;
-        }
-        /* Squiggle / lengkungan kanan atas */
-        .deco-arc {
-            position: absolute;
-            top: 60px; right: 120px;
-            width: 90px; height: 90px;
-            border: 12px solid var(--purple);
-            border-radius: 50%;
-            clip-path: inset(0 0 50% 0);
-            opacity: .22;
-            transform: rotate(-30deg);
-        }
-        /* Titik-titik grid halus */
-        .dot-grid {
-            position: absolute; inset: 0;
-            background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px);
-            background-size: 28px 28px;
-        }
-        /* Badge melayang kiri */
-        .float-badge {
-            position: absolute;
-            top: 22%; left: 6%;
-            background: var(--white);
-            border: 2.5px solid var(--black);
-            border-radius: 16px;
-            box-shadow: 4px 4px 0 var(--black);
-            padding: 12px 20px;
-            font-family: 'Outfit', sans-serif;
-            font-weight: 800;
-            font-size: 13px;
-            color: var(--black);
-            display: flex; align-items: center; gap: 10px;
-            animation: float-y 4s ease-in-out infinite;
-            white-space: nowrap;
-        }
-        .float-badge .dot { width: 10px; height: 10px; background: #22C55E; border-radius: 50%; border: 2px solid var(--black); }
-        /* Badge kanan bawah */
-        .float-badge-2 {
-            position: absolute;
-            bottom: 20%; right: 6%;
-            background: var(--purple);
-            border: 2.5px solid var(--black);
-            border-radius: 16px;
-            box-shadow: 4px 4px 0 var(--black);
-            padding: 12px 20px;
-            font-family: 'Outfit', sans-serif;
-            font-weight: 800;
-            font-size: 13px;
-            color: var(--white);
-            display: flex; align-items: center; gap: 8px;
-            animation: float-y 5s ease-in-out infinite .8s;
-            white-space: nowrap;
-        }
-        /* Chunky shape kanan atas */
-        .deco-chunky {
-            position: absolute;
-            top: 10%; right: 8%;
-            width: 80px; height: 80px;
-            background: var(--purple-lt);
-            border: 3px solid var(--black);
-            border-radius: 20px;
-            box-shadow: 6px 6px 0 var(--black);
-            transform: rotate(18deg);
-            animation: float-y 6s ease-in-out infinite 1.2s;
-        }
-        /* Bintang kecil */
-        .deco-star {
-            position: absolute;
-            bottom: 28%; left: 12%;
-            font-size: 48px;
-            line-height: 1;
-            animation: spin-slow 15s linear infinite reverse;
-            opacity: .35;
-        }
-
-        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
-        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
-        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-
-        /* ── MAIN CARD ── */
-        .login-wrap {
-            position: relative; z-index: 10;
-            width: 100%; max-width: 460px;
-            padding: 0 20px;
-        }
-
-        /* Brand header */
-        .brand {
-            text-align: center;
-            margin-bottom: 32px;
-            animation: slide-up .5s ease both;
-        }
-        .brand-icon {
-            display: inline-flex;
-            align-items: center; justify-content: center;
-            width: 68px; height: 68px;
-            background: var(--purple);
-            border: 3px solid var(--black);
-            border-radius: 20px;
-            box-shadow: 5px 5px 0 var(--black);
-            margin-bottom: 18px;
-            font-size: 28px;
-            color: var(--white);
-            transform: rotate(-6deg);
-            transition: transform .3s;
-        }
-        .brand-icon:hover { transform: rotate(0deg); }
-        .brand h1 {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 900;
-            font-size: 2.4rem;
-            letter-spacing: -2px;
-            color: var(--black);
-            margin: 0 0 6px;
-            line-height: 1;
-        }
-        .brand h1 span { color: var(--purple); }
-        .brand p {
-            font-size: 13px;
-            font-weight: 600;
-            color: #6B7280;
-            margin: 0;
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .brand p .chip {
-            background: var(--purple-lt);
-            color: var(--purple-dark);
-            font-size: 11px;
-            font-weight: 800;
-            padding: 2px 10px;
-            border-radius: 99px;
-            border: 1.5px solid var(--purple);
-            letter-spacing: .5px;
-        }
-
-        /* Card form */
-        .card {
-            background: var(--white);
-            border: 2.5px solid var(--black);
-            border-radius: 28px;
-            box-shadow: 8px 8px 0 var(--black);
-            padding: 40px 40px 36px;
-            animation: slide-up .55s ease .08s both;
-        }
-        @media (max-width: 480px) { .card { padding: 28px 22px 24px; } }
-
-        .card-heading {
-            font-family: 'Outfit', sans-serif;
-            font-weight: 900;
-            font-size: 1.55rem;
-            letter-spacing: -1px;
-            color: var(--black);
-            margin: 0 0 4px;
-        }
-        .card-sub {
-            font-size: 13px; font-weight: 500;
-            color: #9CA3AF;
-            margin: 0 0 28px;
-        }
-
-        /* Alert */
-        .alert {
-            padding: 12px 16px;
-            border-radius: 14px;
-            font-size: 13px; font-weight: 600;
-            display: flex; align-items: flex-start; gap: 10px;
-            margin-bottom: 20px;
-            border: 2px solid;
-        }
-        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
-        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
-
-        /* Label */
-        .field-label {
-            display: block;
-            font-size: 13px; font-weight: 700;
-            color: var(--black);
-            margin-bottom: 8px;
-            letter-spacing: .2px;
-        }
-
-        /* Input */
-        .input-wrap { position: relative; margin-bottom: 18px; }
-        .input-icon {
-            position: absolute; left: 16px; top: 50%;
-            transform: translateY(-50%);
-            color: #A78BFA;
-            font-size: 15px;
-            transition: color .2s;
-            pointer-events: none;
-        }
-        .input-wrap:focus-within .input-icon { color: var(--purple); }
-
-        .field-input {
-            width: 100%;
-            background: var(--gray-soft);
-            border: 2px solid #E5E7EB;
-            border-radius: 14px;
-            padding: 14px 16px 14px 44px;
-            font-size: 14px; font-weight: 500;
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            color: var(--black);
-            transition: border-color .2s, box-shadow .2s, background .2s;
-            outline: none;
-        }
-        .field-input::placeholder { color: #C4B5FD; }
-        .field-input:focus {
-            border-color: var(--purple);
-            background: var(--white);
-            box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple);
-        }
-
-        /* Toggle password */
-        .toggle-pw {
-            position: absolute; right: 14px; top: 50%;
-            transform: translateY(-50%);
-            background: none; border: none; cursor: pointer;
-            color: #A78BFA; font-size: 14px;
-            transition: color .2s;
-            padding: 4px;
-        }
-        .toggle-pw:hover { color: var(--purple); }
-
-        /* Remember + Forgot */
-        .form-meta {
-            display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 26px;
-        }
-        .remember-label {
-            display: flex; align-items: center; gap: 8px;
-            font-size: 13px; font-weight: 600; color: #374151;
-            cursor: pointer;
-        }
-        .remember-box {
-            appearance: none; width: 18px; height: 18px;
-            border: 2px solid var(--purple);
-            border-radius: 6px; background: var(--white);
-            cursor: pointer; position: relative;
-            transition: background .15s;
-        }
-        .remember-box:checked { background: var(--purple); }
-        .remember-box:checked::after {
-            content: '';
-            position: absolute; top: 2px; left: 5px;
-            width: 5px; height: 9px;
-            border: 2px solid var(--white);
-            border-top: none; border-left: none;
-            transform: rotate(45deg);
-        }
-        .forgot-link {
-            font-size: 13px; font-weight: 700;
-            color: var(--purple);
-            text-decoration: none;
-            transition: color .2s;
-        }
-        .forgot-link:hover { color: var(--purple-dark); text-decoration: underline; }
-
-        /* Submit btn */
-        .btn-submit {
-            width: 100%;
-            background: var(--purple);
-            color: var(--white);
-            border: 2.5px solid var(--black);
-            border-radius: 14px;
-            padding: 15px;
-            font-family: 'Outfit', sans-serif;
-            font-size: 16px; font-weight: 800;
-            letter-spacing: .3px;
-            cursor: pointer;
-            display: flex; align-items: center; justify-content: center; gap: 10px;
-            box-shadow: 4px 4px 0 var(--black);
-            transition: transform .15s, box-shadow .15s, background .15s;
-            outline: none;
-        }
-        .btn-submit:hover {
-            background: var(--purple-dark);
-            transform: translate(-2px, -2px);
-            box-shadow: 6px 6px 0 var(--black);
-        }
-        .btn-submit:active {
-            transform: translate(2px, 2px);
-            box-shadow: 2px 2px 0 var(--black);
-        }
-
-        /* Register link */
-        .register-row {
-            text-align: center;
-            margin-top: 20px;
-        }
-        .register-link {
-            font-size: 13px; font-weight: 700;
-            color: var(--purple);
-            text-decoration: none;
-            display: inline-flex; align-items: center; gap: 6px;
-            padding: 8px 18px;
-            border: 2px solid var(--purple-lt);
-            border-radius: 99px;
-            background: var(--purple-lt);
-            transition: all .2s;
-        }
-        .register-link:hover {
-            background: var(--purple);
-            color: var(--white);
-            border-color: var(--purple);
-            transform: translateY(-1px);
-        }
-
-        /* Divider */
-        .divider {
-            border: none;
-            border-top: 2px dashed #E5E7EB;
-            margin: 24px 0 20px;
-        }
-
-        /* Footer */
-        .footer {
-            text-align: center;
-            margin-top: 28px;
-            font-size: 12px; font-weight: 500;
-            color: #9CA3AF;
-            animation: slide-up .6s ease .18s both;
-        }
-
-        @keyframes slide-up {
-            from { opacity: 0; transform: translateY(22px); }
-            to   { opacity: 1; transform: translateY(0); }
-        }
-    </style>
-</head>
-
-<body>
-
-    <!-- ── PRELOADER ── -->
-    <div id="preloader">
-        <div class="pre-logo">
-            Nusa<span>Learn</span>
-            <span style="font-size:1.6rem; margin-left:4px;">✦</span>
-        </div>
-    </div>
-
-    <!-- ── BACKGROUND SCENE ── -->
-    <div class="bg-scene">
-        <div class="dot-grid"></div>
-        <div class="blob-tl"></div>
-        <div class="blob-br"></div>
-        <div class="deco-ring"></div>
-        <div class="deco-arc"></div>
-        <div class="deco-chunky"></div>
-
-        <!-- Badge melayang kiri: status server -->
-        <div class="float-badge">
-            <div class="dot"></div>
-            Server Online
-        </div>
-
-        <!-- Badge melayang kanan: versi -->
-        <div class="float-badge-2">
-            <i class="fa-solid fa-microchip" style="font-size:14px"></i>
-            AI Powered v2.0
-        </div>
-
-        <!-- Bintang dekoratif -->
-        <div class="deco-star" style="color: var(--purple);">✦</div>
-    </div>
-
-    <!-- ── LOGIN FORM ── -->
-    <div class="login-wrap">
-
-        <!-- Brand -->
-        <div class="brand">
-            <div class="brand-icon">
-                <i class="fa-solid fa-graduation-cap"></i>
-            </div>
-            <h1>Nusa<span>Learn</span></h1>
-            <p>
-                Administrator Gateway
-                <span class="chip">ADMIN</span>
-            </p>
-        </div>
-
-        <!-- Card -->
-        <div class="card">
-            <p class="card-heading">Selamat datang! 👋</p>
-            <p class="card-sub">Masuk untuk mengakses panel administrator.</p>
-
-            {{-- Alert Sukses --}}
-            @if (session('success'))
-            <div class="alert alert-success">
-                <i class="fa-solid fa-circle-check" style="margin-top:1px"></i>
-                <span>{{ session('success') }}</span>
-            </div>
-            @endif
-
-            {{-- Alert Error --}}
-            @if ($errors->any())
-            <div class="alert alert-error">
-                <i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i>
-                <div>
-                    <strong style="display:block; margin-bottom:2px;">Otorisasi Ditolak!</strong>
-                    <span style="font-weight:500">{{ $errors->first() }}</span>
-                </div>
-            </div>
-            @endif
-
-            <form method="POST" action="{{ route('login.post') }}">
-                @csrf
-
-                <!-- Username -->
-                <label class="field-label" for="username">Username Akses</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-user-shield input-icon"></i>
-                    <input class="field-input" id="username" type="text"
-                           name="username" value="{{ old('username') }}"
-                           required autofocus placeholder="Masukkan username...">
-                </div>
-
-                <!-- Password -->
-                <label class="field-label" for="password">Kunci Keamanan</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-key input-icon"></i>
-                    <input class="field-input" id="password" type="password"
-                           name="password" required
-                           placeholder="••••••••" style="padding-right: 46px;">
-                    <button type="button" class="toggle-pw"
-                            onclick="togglePassword('password', 'eye-icon')">
-                        <i id="eye-icon" class="fa-regular fa-eye"></i>
-                    </button>
-                </div>
-
-                <!-- Meta row -->
-                <div class="form-meta">
-                    <label class="remember-label">
-                        <input type="checkbox" name="remember" class="remember-box">
-                        Ingat sesi saya
-                    </label>
-                    <a href="{{ route('password.recovery') }}" class="forgot-link">
-                        Lupa kata sandi?
-                    </a>
-                </div>
-
-                <!-- Submit -->
-                <button class="btn-submit" type="submit">
-                    <i class="fa-solid fa-right-to-bracket"></i>
-                    Masuk Sistem
-                </button>
-
-                <hr class="divider">
-
-                <!-- Register -->
-                <div class="register-row">
-                    <a href="{{ route('admin.register') }}" class="register-link">
-                        <i class="fa-solid fa-user-plus"></i>
-                        Daftarkan Administrator Baru
-                    </a>
-                </div>
-
-            </form>
-        </div>
-
-        <!-- Footer -->
-        <div class="footer">
-            &copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.
-        </div>
-
-    </div>
-
-    <script>
-        // Toggle password visibility
-        function togglePassword(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon  = document.getElementById(iconId);
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.classList.replace('fa-eye', 'fa-eye-slash');
-            } else {
-                input.type = 'password';
-                icon.classList.replace('fa-eye-slash', 'fa-eye');
-            }
-        }
-
-        // Preloader
-        window.addEventListener('load', function () {
-            const pre = document.getElementById('preloader');
-            pre.style.opacity = '0';
-            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
-        });
-    </script>
-</body>
-</html>
-</file>
-
-<file path="resources/views/auth/password-recovery.blade.php">
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Pemulihan Akses - NusaLearn</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --purple:     #7C3AED;
-            --purple-mid: #8B5CF6;
-            --purple-lt:  #EDE9FE;
-            --purple-dark:#4C1D95;
-            --black:      #0A0A0A;
-            --white:      #FFFFFF;
-            --gray-soft:  #F5F3FF;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; min-height: 100vh;
-            background: var(--white);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow-x: hidden;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; padding: 24px 0;
-        }
-
-        /* PRELOADER */
-        #preloader { position: fixed; inset: 0; background: var(--white); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .6s ease, visibility .6s ease; }
-        .pre-logo { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--black); letter-spacing: -2px; display: flex; align-items: center; gap: 6px; animation: pre-pulse 1.2s ease-in-out infinite; }
-        .pre-logo span { color: var(--purple); }
-        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-        /* BG SCENE */
-        .bg-scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-        .blob-tl { position: absolute; top: -120px; left: -100px; width: 520px; height: 520px; background: var(--purple); border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; opacity: .10; animation: morph-a 12s ease-in-out infinite; }
-        .blob-br { position: absolute; bottom: -100px; right: -80px; width: 440px; height: 440px; background: var(--purple-mid); border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%; opacity: .08; animation: morph-b 14s ease-in-out infinite; }
-        .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px); background-size: 28px 28px; }
-        .deco-ring { position: absolute; bottom: 80px; left: 60px; width: 100px; height: 100px; border: 12px solid var(--purple); border-radius: 50%; opacity: .15; animation: spin-slow 20s linear infinite; }
-        .deco-chunky { position: absolute; top: 8%; right: 7%; width: 70px; height: 70px; background: var(--purple-lt); border: 3px solid var(--black); border-radius: 18px; box-shadow: 5px 5px 0 var(--black); transform: rotate(18deg); animation: float-y 6s ease-in-out infinite 1s; }
-        .deco-star { position: absolute; bottom: 25%; left: 10%; font-size: 44px; line-height: 1; animation: spin-slow 15s linear infinite reverse; opacity: .25; color: var(--purple); }
-
-        /* Step badge melayang */
-        .float-step { position: absolute; top: 18%; left: 6%; background: var(--white); border: 2.5px solid var(--black); border-radius: 16px; box-shadow: 4px 4px 0 var(--black); padding: 10px 18px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px; color: var(--black); display: flex; align-items: center; gap: 8px; animation: float-y 4s ease-in-out infinite; white-space: nowrap; }
-        .float-step i { color: var(--purple); font-size: 14px; }
-
-        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
-        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
-        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes slide-up { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
-
-        /* WRAP */
-        .recovery-wrap { position: relative; z-index: 10; width: 100%; max-width: 460px; padding: 0 20px; }
-
-        /* BRAND */
-        .brand { text-align: center; margin-bottom: 28px; animation: slide-up .5s ease both; }
-        .brand-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: var(--purple); border: 3px solid var(--black); border-radius: 20px; box-shadow: 5px 5px 0 var(--black); margin-bottom: 14px; font-size: 26px; color: var(--white); transform: rotate(-6deg); transition: transform .3s; }
-        .brand-icon:hover { transform: rotate(0deg); }
-        .brand h1 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; letter-spacing: -2px; color: var(--black); margin: 0 0 6px; line-height: 1; }
-        .brand h1 span { color: var(--purple); }
-        .brand p { font-size: 13px; font-weight: 600; color: #6B7280; margin: 0; }
-
-        /* CARD */
-        .card { background: var(--white); border: 2.5px solid var(--black); border-radius: 28px; box-shadow: 8px 8px 0 var(--black); padding: 36px 36px 32px; animation: slide-up .55s ease .08s both; }
-        @media (max-width: 480px) { .card { padding: 24px 20px; } }
-
-        /* STEP INDICATOR */
-        .step-bar { display: flex; align-items: center; gap: 0; margin-bottom: 28px; }
-        .step-item { display: flex; flex-direction: column; align-items: center; flex: 1; }
-        .step-dot { width: 32px; height: 32px; border-radius: 50%; border: 2.5px solid var(--black); display: flex; align-items: center; justify-content: center; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 13px; background: var(--white); color: #9CA3AF; box-shadow: 2px 2px 0 var(--black); transition: all .3s; }
-        .step-dot.active { background: var(--purple); color: var(--white); border-color: var(--purple); box-shadow: 3px 3px 0 var(--black); }
-        .step-dot.done { background: #22C55E; color: var(--white); border-color: #16A34A; }
-        .step-label { font-size: 10px; font-weight: 700; color: #9CA3AF; margin-top: 4px; text-align: center; }
-        .step-label.active { color: var(--purple); }
-        .step-line { flex: 1; height: 2.5px; background: #E5E7EB; margin: 0 4px; margin-bottom: 18px; border-radius: 99px; transition: background .3s; }
-        .step-line.done { background: var(--purple); }
-
-        /* SECTION HEADING */
-        .section-head { margin-bottom: 20px; }
-        .section-head h2 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 1.4rem; letter-spacing: -0.5px; color: var(--black); margin: 0 0 4px; }
-        .section-head p { font-size: 13px; font-weight: 500; color: #9CA3AF; margin: 0; }
-
-        /* ALERT */
-        .alert { padding: 12px 16px; border-radius: 14px; font-size: 13px; font-weight: 600; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 20px; border: 2px solid; }
-        .alert-success { background: #F0FDF4; border-color: #16A34A; color: #15803D; }
-        .alert-error   { background: #FFF1F2; border-color: #F43F5E; color: #BE123C; }
-
-        /* LABEL & INPUT */
-        .field-label { display: block; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 8px; }
-        .input-wrap { position: relative; margin-bottom: 18px; }
-        .input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; font-size: 15px; transition: color .2s; pointer-events: none; }
-        .input-wrap:focus-within .input-icon { color: var(--purple); }
-        .field-input { width: 100%; background: var(--gray-soft); border: 2px solid #E5E7EB; border-radius: 14px; padding: 14px 16px 14px 44px; font-size: 14px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--black); transition: border-color .2s, box-shadow .2s, background .2s; outline: none; }
-        .field-input::placeholder { color: #C4B5FD; }
-        .field-input:focus { border-color: var(--purple); background: var(--white); box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple); }
-        .toggle-pw { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A78BFA; font-size: 14px; transition: color .2s; padding: 4px; }
-        .toggle-pw:hover { color: var(--purple); }
-
-        /* OTP INPUT */
-        .otp-input { width: 100%; background: var(--gray-soft); border: 2.5px solid var(--black); border-radius: 14px; padding: 18px 16px; font-size: 2rem; font-weight: 900; font-family: 'Outfit', monospace; letter-spacing: .6em; text-align: center; color: var(--purple); outline: none; box-shadow: 3px 3px 0 var(--black); transition: box-shadow .2s, border-color .2s; }
-        .otp-input:focus { border-color: var(--purple); box-shadow: 5px 5px 0 var(--black); }
-        .otp-input::placeholder { color: #DDD6FE; letter-spacing: .5em; }
-
-        /* OTP ICON BOX */
-        .otp-icon { width: 72px; height: 72px; background: var(--purple-lt); border: 2.5px solid var(--black); border-radius: 20px; box-shadow: 4px 4px 0 var(--black); display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; font-size: 28px; color: var(--purple); }
-
-        /* WARNING BOX */
-        .warn-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #92400E; margin-bottom: 20px; }
-
-        /* BTN */
-        .btn-submit { width: 100%; background: var(--purple); color: var(--white); border: 2.5px solid var(--black); border-radius: 14px; padding: 15px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 4px 4px 0 var(--black); transition: transform .15s, box-shadow .15s, background .15s; outline: none; }
-        .btn-submit:hover { background: var(--purple-dark); transform: translate(-2px, -2px); box-shadow: 6px 6px 0 var(--black); }
-        .btn-submit:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--black); }
-
-        /* BACK LINK */
-        .back-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: #6B7280; text-decoration: none; padding: 8px 16px; border: 2px solid #E5E7EB; border-radius: 99px; transition: all .2s; margin-top: 20px; }
-        .back-link:hover { border-color: var(--purple); color: var(--purple); background: var(--purple-lt); }
-
-        /* FOOTER */
-        .footer { text-align: center; margin-top: 24px; font-size: 12px; font-weight: 500; color: #9CA3AF; animation: slide-up .6s ease .18s both; }
-    </style>
-</head>
-<body>
-
-    <div id="preloader">
-        <div class="pre-logo">Nusa<span>Learn</span> <span style="font-size:1.6rem;margin-left:4px">✦</span></div>
-    </div>
-
-    <div class="bg-scene">
-        <div class="dot-grid"></div>
-        <div class="blob-tl"></div>
-        <div class="blob-br"></div>
-        <div class="deco-ring"></div>
-        <div class="deco-chunky"></div>
-        <div class="deco-star">✦</div>
-        <div class="float-step">
-            <i class="fa-solid fa-shield-halved"></i> Pemulihan Aman
-        </div>
-    </div>
-
-    <div class="recovery-wrap">
-        <div class="brand">
-            <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
-            <h1>Nusa<span>Learn</span></h1>
-            <p>Pemulihan Akses Administrator</p>
-        </div>
-
-        <div class="card">
-
-            {{-- Step Indicator --}}
-            <div class="step-bar">
-                <div class="step-item">
-                    <div class="step-dot {{ $step === 'request_email' ? 'active' : 'done' }}">
-                        {{ $step === 'request_email' ? '1' : '✓' }}
-                    </div>
-                    <div class="step-label {{ $step === 'request_email' ? 'active' : '' }}">Email</div>
-                </div>
-                <div class="step-line {{ in_array($step, ['verify_otp','reset_password']) ? 'done' : '' }}"></div>
-                <div class="step-item">
-                    <div class="step-dot {{ $step === 'verify_otp' ? 'active' : ($step === 'reset_password' ? 'done' : '') }}">
-                        {{ $step === 'reset_password' ? '✓' : '2' }}
-                    </div>
-                    <div class="step-label {{ $step === 'verify_otp' ? 'active' : '' }}">Kode OTP</div>
-                </div>
-                <div class="step-line {{ $step === 'reset_password' ? 'done' : '' }}"></div>
-                <div class="step-item">
-                    <div class="step-dot {{ $step === 'reset_password' ? 'active' : '' }}">3</div>
-                    <div class="step-label {{ $step === 'reset_password' ? 'active' : '' }}">Password Baru</div>
-                </div>
-            </div>
-
-            @if (session('success'))
-            <div class="alert alert-success"><i class="fa-solid fa-circle-check" style="margin-top:1px"></i><span>{{ session('success') }}</span></div>
-            @endif
-            @if ($errors->any())
-            <div class="alert alert-error"><i class="fa-solid fa-triangle-exclamation" style="margin-top:1px"></i><span>{{ $errors->first() }}</span></div>
-            @endif
-
-            {{-- STEP 1: Request Email --}}
-            @if($step === 'request_email')
-            <div class="section-head">
-                <h2>Masukkan Email Anda</h2>
-                <p>Kami akan mengirimkan kode verifikasi 6 digit ke email terdaftar.</p>
-            </div>
-            <form method="POST" action="{{ route('password.sendOtp') }}">
-                @csrf
-                <label class="field-label">Alamat Email Valid</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-envelope input-icon"></i>
-                    <input class="field-input" type="email" name="email" required autofocus placeholder="admin@sekolah.sch.id">
-                </div>
-                <button class="btn-submit" type="submit">
-                    <i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP
-                </button>
-            </form>
-
-            {{-- STEP 2: Verify OTP --}}
-            @elseif($step === 'verify_otp')
-            <div class="otp-icon"><i class="fa-solid fa-envelope-open-text"></i></div>
-            <div class="section-head" style="text-align:center">
-                <h2>Cek Email Anda</h2>
-                <p>Kode OTP 6 digit dikirim ke <strong style="color:var(--purple)">{{ session('reset_email') }}</strong></p>
-            </div>
-            <form method="POST" action="{{ route('password.verifyOtp') }}">
-                @csrf
-                <div style="margin-bottom:20px">
-                    <input class="otp-input" type="text" name="otp" required maxlength="6" autofocus placeholder="——————" oninput="this.value=this.value.replace(/[^0-9]/g,'')">
-                </div>
-                <button class="btn-submit" type="submit">
-                    <i class="fa-solid fa-check-double"></i> Verifikasi Kode
-                </button>
-            </form>
-
-            {{-- STEP 3: Reset Password --}}
-            @elseif($step === 'reset_password')
-            <div class="section-head">
-                <h2>Buat Password Baru</h2>
-                <p>Buat password yang kuat untuk akun Anda.</p>
-            </div>
-            <div class="warn-box">
-                <i class="fa-solid fa-triangle-exclamation"></i>
-                Minimal 8 karakter, mengandung huruf besar, kecil, angka & simbol.
-            </div>
-            <form method="POST" action="{{ route('password.resetPassword') }}">
-                @csrf
-                <label class="field-label">Password Baru</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-key input-icon"></i>
-                    <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:46px">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
-                </div>
-                <label class="field-label">Konfirmasi Password Baru</label>
-                <div class="input-wrap">
-                    <i class="fa-solid fa-lock input-icon"></i>
-                    <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:46px">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
-                </div>
-                <button class="btn-submit" type="submit">
-                    <i class="fa-solid fa-rotate-right"></i> Update Password & Login
-                </button>
-            </form>
-            @endif
-
-            <div style="text-align:center">
-                <a href="{{ route('login') }}" class="back-link">
-                    <i class="fa-solid fa-arrow-left"></i> Kembali ke Login
-                </a>
-            </div>
-        </div>
-
-        <div class="footer">&copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.</div>
-    </div>
-
-    <script>
-        function togglePassword(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon  = document.getElementById(iconId);
-            if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
-            else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
-        }
-        window.addEventListener('load', function() {
-            const pre = document.getElementById('preloader');
-            pre.style.opacity = '0';
-            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
-        });
-    </script>
-</body>
-</html>
-</file>
-
-<file path="resources/views/auth/register.blade.php">
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Register Administrator - NusaLearn</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --purple:     #7C3AED;
-            --purple-mid: #8B5CF6;
-            --purple-lt:  #EDE9FE;
-            --purple-dark:#4C1D95;
-            --black:      #0A0A0A;
-            --white:      #FFFFFF;
-            --gray-soft:  #F5F3FF;
-        }
-        * { box-sizing: border-box; }
-        body {
-            margin: 0; min-height: 100vh;
-            background: var(--white);
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            overflow-x: hidden;
-            display: flex; align-items: center; justify-content: center;
-            position: relative; padding: 32px 0;
-        }
-
-        /* PRELOADER */
-        #preloader { position: fixed; inset: 0; background: var(--white); z-index: 9999; display: flex; align-items: center; justify-content: center; transition: opacity .6s ease, visibility .6s ease; }
-        .pre-logo { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.5rem; color: var(--black); letter-spacing: -2px; display: flex; align-items: center; gap: 6px; animation: pre-pulse 1.2s ease-in-out infinite; }
-        .pre-logo span { color: var(--purple); }
-        @keyframes pre-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
-
-        /* BG SCENE */
-        .bg-scene { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-        .blob-tl { position: absolute; top: -120px; left: -100px; width: 520px; height: 520px; background: var(--purple); border-radius: 60% 40% 70% 30% / 50% 60% 40% 50%; opacity: .09; animation: morph-a 12s ease-in-out infinite; }
-        .blob-br { position: absolute; bottom: -100px; right: -80px; width: 440px; height: 440px; background: var(--purple-mid); border-radius: 40% 60% 30% 70% / 60% 40% 50% 50%; opacity: .07; animation: morph-b 14s ease-in-out infinite; }
-        .dot-grid { position: absolute; inset: 0; background-image: radial-gradient(circle, #7C3AED22 1px, transparent 1px); background-size: 28px 28px; }
-        .deco-ring { position: absolute; bottom: 60px; right: 80px; width: 90px; height: 90px; border: 11px solid var(--purple); border-radius: 50%; opacity: .14; animation: spin-slow 20s linear infinite; }
-        .deco-tri { position: absolute; top: 10%; left: 5%; width: 0; height: 0; border-left: 32px solid transparent; border-right: 32px solid transparent; border-bottom: 55px solid var(--purple-lt); opacity: .7; animation: float-y 5s ease-in-out infinite; filter: drop-shadow(3px 3px 0 var(--black)); }
-        .deco-star { position: absolute; top: 30%; right: 6%; font-size: 42px; line-height: 1; animation: spin-slow 15s linear infinite reverse; opacity: .22; color: var(--purple); }
-
-        /* Badge akses kode */
-        .float-badge { position: absolute; bottom: 22%; left: 5%; background: var(--purple); border: 2.5px solid var(--black); border-radius: 16px; box-shadow: 4px 4px 0 var(--black); padding: 10px 18px; font-family: 'Outfit', sans-serif; font-weight: 800; font-size: 12px; color: var(--white); display: flex; align-items: center; gap: 8px; animation: float-y 4.5s ease-in-out infinite .5s; white-space: nowrap; }
-
-        @keyframes morph-a { 0%,100%{border-radius:60% 40% 70% 30%/50% 60% 40% 50%} 50%{border-radius:30% 70% 40% 60%/60% 30% 70% 40%} }
-        @keyframes morph-b { 0%,100%{border-radius:40% 60% 30% 70%/60% 40% 50% 50%} 50%{border-radius:70% 30% 60% 40%/30% 70% 40% 60%} }
-        @keyframes float-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-14px)} }
-        @keyframes spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
-        @keyframes slide-up { from{opacity:0;transform:translateY(22px)} to{opacity:1;transform:translateY(0)} }
-
-        /* WRAP */
-        .register-wrap { position: relative; z-index: 10; width: 100%; max-width: 640px; padding: 0 20px; }
-
-        /* BRAND */
-        .brand { text-align: center; margin-bottom: 28px; animation: slide-up .5s ease both; }
-        .brand-icon { display: inline-flex; align-items: center; justify-content: center; width: 64px; height: 64px; background: var(--purple); border: 3px solid var(--black); border-radius: 20px; box-shadow: 5px 5px 0 var(--black); margin-bottom: 14px; font-size: 26px; color: var(--white); transform: rotate(-6deg); transition: transform .3s; }
-        .brand-icon:hover { transform: rotate(0deg); }
-        .brand h1 { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 2.2rem; letter-spacing: -2px; color: var(--black); margin: 0 0 6px; line-height: 1; }
-        .brand h1 span { color: var(--purple); }
-        .brand p { font-size: 13px; font-weight: 600; color: #6B7280; margin: 0; }
-
-        /* CARD */
-        .card { background: var(--white); border: 2.5px solid var(--black); border-radius: 28px; box-shadow: 8px 8px 0 var(--black); padding: 36px 36px 32px; animation: slide-up .55s ease .08s both; }
-        @media (max-width: 560px) { .card { padding: 22px 18px; } }
-
-        .card-heading { font-family: 'Outfit', sans-serif; font-weight: 900; font-size: 1.45rem; letter-spacing: -0.5px; color: var(--black); margin: 0 0 4px; }
-        .card-sub { font-size: 13px; font-weight: 500; color: #9CA3AF; margin: 0 0 24px; }
-
-        /* ACCESS CODE BOX */
-        .access-box { background: var(--purple-lt); border: 2.5px solid var(--purple); border-radius: 18px; padding: 20px; margin-bottom: 24px; box-shadow: 3px 3px 0 var(--purple-dark); }
-        .access-box-label { font-size: 13px; font-weight: 800; color: var(--purple-dark); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
-        .access-note { font-size: 11px; font-weight: 600; color: var(--purple); margin-top: 8px; }
-
-        /* DIVIDER */
-        .section-divider { border: none; border-top: 2px dashed #E5E7EB; margin: 20px 0; }
-        .section-title { font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 800; color: #9CA3AF; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
-        .section-title::after { content:''; flex:1; height:2px; background:#F3F4F6; border-radius:99px; }
-
-        /* GRID */
-        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-        @media (max-width: 560px) { .form-grid { grid-template-columns: 1fr; } }
-
-        /* LABEL & INPUT */
-        .field-label { display: block; font-size: 13px; font-weight: 700; color: var(--black); margin-bottom: 7px; }
-        .input-wrap { position: relative; }
-        .input-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; font-size: 14px; transition: color .2s; pointer-events: none; }
-        .input-wrap:focus-within .input-icon { color: var(--purple); }
-        .field-input { width: 100%; background: var(--gray-soft); border: 2px solid #E5E7EB; border-radius: 12px; padding: 12px 16px 12px 42px; font-size: 13px; font-weight: 500; font-family: 'Plus Jakarta Sans', sans-serif; color: var(--black); transition: border-color .2s, box-shadow .2s, background .2s; outline: none; }
-        .field-input::placeholder { color: #C4B5FD; }
-        .field-input:focus { border-color: var(--purple); background: var(--white); box-shadow: 0 0 0 3px #7C3AED15, 3px 3px 0 var(--purple); }
-        .toggle-pw { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #A78BFA; font-size: 13px; transition: color .2s; padding: 4px; }
-        .toggle-pw:hover { color: var(--purple); }
-        .field-group { margin-bottom: 0; }
-
-        /* ERROR ALERT */
-        .alert-error { background: #FFF1F2; border: 2px solid #F43F5E; border-radius: 14px; padding: 14px 16px; font-size: 13px; font-weight: 600; color: #BE123C; display: flex; align-items: flex-start; gap: 10px; margin-bottom: 22px; }
-        .alert-error ul { margin: 4px 0 0; padding-left: 16px; font-weight: 500; font-size: 12px; }
-
-        /* WARN BOX */
-        .warn-box { background: #FFFBEB; border: 2px solid #F59E0B; border-radius: 12px; padding: 10px 14px; font-size: 12px; font-weight: 600; color: #92400E; margin-bottom: 14px; }
-
-        /* BTN */
-        .btn-submit { width: 100%; background: var(--purple); color: var(--white); border: 2.5px solid var(--black); border-radius: 14px; padding: 16px; font-family: 'Outfit', sans-serif; font-size: 16px; font-weight: 800; letter-spacing: .3px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 4px 4px 0 var(--black); transition: transform .15s, box-shadow .15s, background .15s; outline: none; margin-top: 24px; }
-        .btn-submit:hover { background: var(--purple-dark); transform: translate(-2px,-2px); box-shadow: 6px 6px 0 var(--black); }
-        .btn-submit:active { transform: translate(2px,2px); box-shadow: 2px 2px 0 var(--black); }
-
-        /* LOGIN LINK */
-        .login-link { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--purple); text-decoration: none; padding: 8px 18px; border: 2px solid var(--purple-lt); border-radius: 99px; background: var(--purple-lt); transition: all .2s; }
-        .login-link:hover { background: var(--purple); color: var(--white); border-color: var(--purple); transform: translateY(-1px); }
-
-        /* FOOTER */
-        .footer { text-align: center; margin-top: 24px; font-size: 12px; font-weight: 500; color: #9CA3AF; animation: slide-up .6s ease .18s both; }
-    </style>
-</head>
-<body>
-
-    <div id="preloader">
-        <div class="pre-logo">Nusa<span>Learn</span> <span style="font-size:1.6rem;margin-left:4px">✦</span></div>
-    </div>
-
-    <div class="bg-scene">
-        <div class="dot-grid"></div>
-        <div class="blob-tl"></div>
-        <div class="blob-br"></div>
-        <div class="deco-ring"></div>
-        <div class="deco-tri"></div>
-        <div class="deco-star">✦</div>
-        <div class="float-badge">
-            <i class="fa-solid fa-lock" style="font-size:13px"></i>
-            Akses Terbatas
-        </div>
-    </div>
-
-    <div class="register-wrap">
-        <div class="brand">
-            <div class="brand-icon"><i class="fa-solid fa-user-plus"></i></div>
-            <h1>Nusa<span>Learn</span></h1>
-            <p>Registrasi Panel Administrator</p>
-        </div>
-
-        <div class="card">
-            <p class="card-heading">Buat Akun Admin Baru 🔐</p>
-            <p class="card-sub">Isi semua kolom di bawah untuk mendaftar sebagai administrator.</p>
-
-            @if ($errors->any())
-            <div class="alert-error">
-                <i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;flex-shrink:0"></i>
-                <div>
-                    <strong>Registrasi Gagal!</strong>
-                    <ul>
-                        @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            </div>
-            @endif
-
-            <form method="POST" action="{{ route('admin.register.post') }}">
-                @csrf
-
-                {{-- Access Code --}}
-                <div class="access-box">
-                    <div class="access-box-label">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        Kode Akses Pendaftaran <span style="color:#F43F5E">*</span>
-                    </div>
-                    <div style="position:relative">
-                        <i class="fa-solid fa-shield-halved" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#A78BFA;font-size:14px;pointer-events:none"></i>
-                        <input style="width:100%;background:#fff;border:2px solid var(--purple);border-radius:12px;padding:12px 16px 12px 42px;font-size:13px;font-weight:700;font-family:'Outfit',monospace;color:var(--black);letter-spacing:3px;text-transform:uppercase;outline:none;transition:box-shadow .2s" 
-                               type="text" name="access_code" id="access_code" required placeholder="MASUKKAN TOKEN AKSES"
-                               onfocus="this.style.boxShadow='3px 3px 0 var(--purple-dark)'" 
-                               onblur="this.style.boxShadow='none'">
-                    </div>
-                    <p class="access-note"><i class="fa-solid fa-circle-info"></i> Registrasi ini terbatas. Masukkan kode akses institusi yang valid.</p>
-                </div>
-
-                {{-- Identitas --}}
-                <div class="section-title"><i class="fa-solid fa-id-card" style="color:var(--purple)"></i> Identitas Administrator</div>
-                <div class="form-grid" style="margin-bottom:14px">
-                    <div class="field-group">
-                        <label class="field-label">Nama Lengkap</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-id-card input-icon"></i>
-                            <input class="field-input" type="text" name="name" value="{{ old('name') }}" required autofocus placeholder="Contoh: Budi Santoso">
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Username Akses</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-user-shield input-icon"></i>
-                            <input class="field-input" type="text" name="username" value="{{ old('username') }}" required placeholder="Contoh: admin_smk1">
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Asal Sekolah / Instansi</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-school input-icon"></i>
-                            <input class="field-input" type="text" name="school_origin" value="{{ old('school_origin') }}" required placeholder="Contoh: SMKN 1 Kendari">
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Alamat Email Valid</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-envelope input-icon"></i>
-                            <input class="field-input" type="email" name="email" value="{{ old('email') }}" required placeholder="admin@sekolah.sch.id">
-                        </div>
-                    </div>
-                </div>
-
-                {{-- Password --}}
-                <hr class="section-divider">
-                <div class="section-title"><i class="fa-solid fa-key" style="color:var(--purple)"></i> Keamanan Akun</div>
-                <div class="warn-box"><i class="fa-solid fa-circle-exclamation"></i> Minimal 8 karakter, mengandung huruf besar, kecil, angka & simbol (@, #, dsb).</div>
-                <div class="form-grid">
-                    <div class="field-group">
-                        <label class="field-label">Kata Sandi Baru</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-key input-icon"></i>
-                            <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:42px">
-                            <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
-                        </div>
-                    </div>
-                    <div class="field-group">
-                        <label class="field-label">Konfirmasi Kata Sandi</label>
-                        <div class="input-wrap">
-                            <i class="fa-solid fa-lock input-icon"></i>
-                            <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:42px">
-                            <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
-                        </div>
-                    </div>
-                </div>
-
-                <button class="btn-submit" type="submit">
-                    <i class="fa-solid fa-user-plus"></i> Selesaikan Registrasi
-                </button>
-
-                <div style="text-align:center;margin-top:20px">
-                    <a href="{{ route('login') }}" class="login-link">
-                        <i class="fa-solid fa-arrow-left"></i> Sudah punya akun? Login
-                    </a>
-                </div>
-            </form>
-        </div>
-
-        <div class="footer">&copy; {{ date('Y') }} NusaLearn Management System &mdash; Secured by Enterprise Security.</div>
-    </div>
-
-    <script>
-        function togglePassword(inputId, iconId) {
-            const input = document.getElementById(inputId);
-            const icon  = document.getElementById(iconId);
-            if (input.type === 'password') { input.type = 'text'; icon.classList.replace('fa-eye','fa-eye-slash'); }
-            else { input.type = 'password'; icon.classList.replace('fa-eye-slash','fa-eye'); }
-        }
-        window.addEventListener('load', function() {
-            const pre = document.getElementById('preloader');
-            pre.style.opacity = '0';
-            setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
-        });
     </script>
 </body>
 </html>
