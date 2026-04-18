@@ -29,6 +29,18 @@ class RegionController extends Controller
 
         return back()->with('success', 'Wilayah baru berhasil dipetakan.');
     }
+        public function update(Request $request, Region $region)
+    {
+        $validated = $request->validate([
+            'postal_code'   => 'required|string|max:10|unique:regions,postal_code,' . $region->id,
+            'district_name' => 'required|string|max:100',
+            'language_code' => 'required|exists:languages,code',
+        ]);
+ 
+        $region->update($validated);
+ 
+        return back()->with('success', 'Data wilayah berhasil diperbarui.');
+    }
 
     public function destroy(Region $region)
     {

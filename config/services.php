@@ -35,4 +35,31 @@ return [
         ],
     ],
 
+    'pixabay' => [
+    'key' => env('PIXABAY_API_KEY'),
+    ],
+    'pexels' => [
+        'key' => env('PEXELS_API_KEY'),
+    ],
+
+    'freesound' => [
+    'key'       => env('FREESOUND_API_KEY'),
+    'client_id' => env('FREESOUND_CLIENT_ID'),
+    ],
+    'freepik' => [
+        'key' => env('FREEPIK_API_KEY'),
+    ],
+    'iconify' => [
+        'base_url' => env('ICONIFY_BASE_URL', 'https://api.iconify.design'),
+    ],
+    'lottiefiles' => [
+        // GraphQL API, tidak butuh key untuk public search
+    ],
+
+    // config/services.php
+    'ai' => [
+        'key'      => env('OPENAI_API_KEY'),
+        'base_url' => env('OPENAI_BASE_URL', 'https://api.chatanywhere.tech/v1'),
+        'model'    => env('OPENAI_MODEL', 'gpt-4o-mini'),
+    ],
 ];

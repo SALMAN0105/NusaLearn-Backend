@@ -14,10 +14,23 @@ class StudentProgress extends Model
     protected $fillable = [
         'user_id',
         'question_id',
-        'student_answer',    // Jawaban siswa (misal: 'b')
-        'is_correct',        // 1 (Benar) atau 0 (Salah)
-        'time_spent_seconds',// Lama mengerjakan (detik)
-        'answered_at',       // Waktu pengerjaan (timestamp dari HP)
+        'student_answer',
+        'student_answer_json',
+        'answer_data',
+        'is_correct',
+        'points_earned',
+        'time_spent_seconds',
+        'answered_at',
+        'template_type',
+        'is_synced',
+    ];
+
+    protected $casts = [
+        'student_answer_json' => 'array',
+        'answer_data'         => 'array',
+        'is_correct'          => 'boolean',
+        'points_earned'       => 'integer',
+        'answered_at'         => 'datetime',
     ];
 
     // Relasi: Progres ini milik User siapa?

@@ -163,6 +163,13 @@
                         <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
+                    <form action="{{ route('logout') }}" method="POST">
+                        @csrf
+                        <button type="submit" aria-label="Logout"
+                            class="w-9 h-9 flex items-center justify-center bg-p-lt dark:bg-p-dark/40 border-2 border-black dark:border-p-dark text-p dark:text-purple-300 hover:bg-neo-red hover:text-black dark:hover:bg-red-500/30 rounded-lg transition-all shadow-neo-sm hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none flex-shrink-0">
+                            <i class="fa-solid fa-power-off text-sm"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>

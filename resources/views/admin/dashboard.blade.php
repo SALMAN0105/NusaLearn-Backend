@@ -380,7 +380,7 @@
                                     </div>
                                 </a>
 
-                                <button onclick="toggleModal('modal-language')" class="qa-card bg-p border-2 border-black rounded-2xl p-5 shadow-neo flex flex-col justify-between aspect-square text-left group">
+                                <a  href="{{ route('languages.index') }}" class="qa-card bg-p border-2 border-black rounded-2xl p-5 shadow-neo flex flex-col justify-between aspect-square text-left group">
                                     <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm group-hover:rotate-12 transition-transform">
                                         <i class="fa-solid fa-language text-p"></i>
                                     </div>
@@ -388,7 +388,7 @@
                                         <p class="font-black text-white text-sm leading-tight uppercase">Add Bahasa</p>
                                         <p class="text-[11px] font-bold text-white/70 mt-1">Register dialect</p>
                                     </div>
-                                </button>
+                                </a>
 
                                 <a href="{{ route('converter.index') }}" class="qa-card col-span-2 bg-white dark:bg-[#2d2460] border-2 border-black dark:border-p-dark rounded-2xl p-5 shadow-neo flex items-center justify-between group">
                                     <div>

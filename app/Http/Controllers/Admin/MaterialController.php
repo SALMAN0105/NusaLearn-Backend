@@ -191,6 +191,19 @@ private function processAI($materialId)
         return redirect()->route('materials.index')->with('success', 'Data materi diperbarui!');
     }
 
+    public function regenerateAI($id)
+        {
+            $material = Material::findOrFail($id);
+            $material->update(['ai_status' => 'pending', 'ai_embeddings' => null]);
+            
+            $pythonPath = base_path('python/ai_processor.py');
+            dispatch(function() use ($pythonPath, $id) {
+                exec("python $pythonPath $id");
+            })->afterResponse();
+            
+            return response()->json(['status' => 'success', 'message' => 'Regenerasi dimulai']);
+        }
+
     public function destroy(Material $material)
     {
         $material->delete();

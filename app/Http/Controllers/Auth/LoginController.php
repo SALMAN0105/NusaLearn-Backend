@@ -11,6 +11,9 @@ class LoginController extends Controller
     // 1. Menampilkan Halaman Login
     public function showLoginForm()
     {
+        if (Auth::check() && Auth::user()->role === 'admin') {
+            return redirect()->route('admin.dashboard');
+        }
         return view('auth.login');
     }
 

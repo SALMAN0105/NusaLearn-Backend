@@ -142,6 +142,129 @@
         
         .btn-download-riwayat.disabled { background: #F5F3FF; color: #9ca3af; cursor: not-allowed; pointer-events: none; box-shadow: none; border-color: #d1d5db; }
         html.dark .btn-download-riwayat.disabled { background: #1e1b4b; border-color: #4C1D95; color: #6b7280; }
+
+        /* ========== Tombol Hapus ========== */
+        .btn-hapus { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; background: #FECDD3; border: 2px solid #000; border-radius: 8px; box-shadow: 2px 2px 0 #000; font-size: 11px; font-weight: 800; color: #000; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+        .btn-hapus:hover { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; background: #fda4af; }
+        html.dark .btn-hapus { border-color: #0A0A0A; }
+
+        /* ========== Pagination ========== */
+        .pagination-btn { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; px: 8px; background: #fff; border: 2px solid #000; border-radius: 8px; box-shadow: 2px 2px 0 #000; font-size: 12px; font-weight: 800; color: #000; cursor: pointer; transition: all 0.15s ease; padding: 0 8px; }
+        .pagination-btn:hover:not(:disabled) { transform: translate(1px, 1px); box-shadow: 1px 1px 0 #000; background: #EDE9FE; }
+        .pagination-btn.active { background: #7C3AED; color: #fff; border-color: #000; }
+        .pagination-btn:disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; box-shadow: none; }
+        html.dark .pagination-btn { background: #2d2460; color: #e2e8f0; }
+        html.dark .pagination-btn.active { background: #7C3AED; }
+
+        /* ========== Error Format Toast ========== */
+        #format-error-toast {
+            position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(120px);
+            z-index: 99999; display: flex; align-items: center; gap: 10px;
+            background: #FECDD3; border: 2.5px solid #000; border-radius: 14px;
+            box-shadow: 5px 5px 0 #000; padding: 12px 20px;
+            font-weight: 900; font-size: 14px; color: #000;
+            transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+            white-space: nowrap;
+        }
+        #format-error-toast.show { transform: translateX(-50%) translateY(0); }
+
+        /* ========== Custom Confirm Modal (Hapus) ========== */
+        #confirm-modal {
+            position: fixed; inset: 0; z-index: 999999; display: none;
+            align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+        }
+        #confirm-modal.active { display: flex; }
+        #confirm-modal .cm-card {
+            background: #fff; border: 3px solid #000; border-radius: 20px;
+            box-shadow: 8px 8px 0 #000; padding: 32px 36px; max-width: 380px; width: 90%;
+            text-align: center; position: relative; overflow: hidden;
+            animation: cm-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+        }
+        html.dark #confirm-modal .cm-card { background: #2d2460; border-color: #4C1D95; box-shadow: 8px 8px 0 #000; }
+        @keyframes cm-pop { from { opacity: 0; transform: scale(0.88) translateY(16px); } to { opacity: 1; transform: scale(1) translateY(0); } }
+
+        #confirm-modal .cm-card::before {
+            content: ''; position: absolute; top: -24px; right: -24px;
+            width: 80px; height: 80px; background: #FECDD3; border: 3px solid #000;
+            border-radius: 50%; opacity: 0.7; pointer-events: none;
+        }
+        html.dark #confirm-modal .cm-card::before { border-color: #4C1D95; opacity: 0.25; }
+        #confirm-modal .cm-card::after {
+            content: ''; position: absolute; bottom: -18px; left: -18px;
+            width: 60px; height: 60px; background: #FDE047; border: 3px solid #000;
+            border-radius: 50%; opacity: 0.5; pointer-events: none;
+        }
+        html.dark #confirm-modal .cm-card::after { border-color: #4C1D95; opacity: 0.2; }
+
+        #confirm-modal .cm-icon-wrap {
+            width: 64px; height: 64px; border-radius: 16px; border: 3px solid #000;
+            background: #FECDD3; box-shadow: 4px 4px 0 #000;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 18px; position: relative; z-index: 1;
+        }
+        html.dark #confirm-modal .cm-icon-wrap { border-color: #4C1D95; box-shadow: 4px 4px 0 #000; }
+
+        #confirm-modal .cm-title {
+            font-family: 'Outfit', sans-serif; font-size: 1.35rem; font-weight: 900;
+            color: #000; letter-spacing: -0.5px; position: relative; z-index: 1; margin-bottom: 6px;
+        }
+        html.dark #confirm-modal .cm-title { color: #f1f5f9; }
+
+        #confirm-modal .cm-filename {
+            display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; background: #F5F3FF; border: 2px solid #000; border-radius: 8px;
+            padding: 3px 10px; font-size: 11px; font-weight: 800; color: #7C3AED;
+            font-family: 'Plus Jakarta Sans', sans-serif; position: relative; z-index: 1;
+            margin-bottom: 6px;
+        }
+        html.dark #confirm-modal .cm-filename { background: #1e1b4b; border-color: #4C1D95; }
+
+        #confirm-modal .cm-subtitle {
+            font-size: 12px; font-weight: 700; color: #6b7280;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            position: relative; z-index: 1; margin-bottom: 24px;
+        }
+        html.dark #confirm-modal .cm-subtitle { color: #a78bfa; }
+
+        #confirm-modal .cm-actions { display: flex; gap: 10px; justify-content: center; position: relative; z-index: 1; }
+
+        #confirm-modal .cm-btn-cancel {
+            flex: 1; padding: 10px 0; background: #F5F3FF; border: 2.5px solid #000; border-radius: 12px;
+            box-shadow: 3px 3px 0 #000; font-size: 13px; font-weight: 900; color: #000;
+            cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s ease;
+        }
+        html.dark #confirm-modal .cm-btn-cancel { background: #1e1b4b; color: #e2e8f0; border-color: #4C1D95; box-shadow: 3px 3px 0 #000; }
+        #confirm-modal .cm-btn-cancel:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 #000; background: #EDE9FE; }
+
+        #confirm-modal .cm-btn-delete {
+            flex: 1; padding: 10px 0; background: #FECDD3; border: 2.5px solid #000; border-radius: 12px;
+            box-shadow: 3px 3px 0 #000; font-size: 13px; font-weight: 900; color: #000;
+            cursor: pointer; font-family: 'Outfit', sans-serif; transition: all 0.15s ease;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        html.dark #confirm-modal .cm-btn-delete { border-color: #4C1D95; box-shadow: 3px 3px 0 #000; }
+        #confirm-modal .cm-btn-delete:hover { transform: translate(1px, 1px); box-shadow: 2px 2px 0 #000; background: #fda4af; }
+        #confirm-modal .cm-btn-delete:disabled { opacity: 0.6; cursor: not-allowed; pointer-events: none; }
+
+        /* ========== Custom Alert Toast (sukses/error notif) ========== */
+        #notif-toast {
+            position: fixed; bottom: 28px; right: 28px;
+            z-index: 999999; display: flex; align-items: center; gap: 12px;
+            border: 2.5px solid #000; border-radius: 16px;
+            box-shadow: 5px 5px 0 #000; padding: 14px 20px;
+            font-weight: 900; font-size: 13px; color: #000;
+            min-width: 260px; max-width: 340px;
+            transform: translateX(120%);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+            font-family: 'Outfit', sans-serif;
+        }
+        #notif-toast.show { transform: translateX(0); }
+        #notif-toast.type-success { background: #A7F3D0; }
+        #notif-toast.type-error   { background: #FECDD3; }
+        #notif-toast .nt-icon { font-size: 20px; flex-shrink: 0; }
+        #notif-toast .nt-body .nt-title { font-size: 13px; font-weight: 900; }
+        #notif-toast .nt-body .nt-sub   { font-size: 11px; font-weight: 700; color: #374151; margin-top: 1px; }
     </style>
 </head>
 <body class="bg-p-xlt text-black font-sans selection:bg-p-lt selection:text-p-dark dark:bg-[#1e1b4b] dark:text-gray-100 transition-colors duration-300 relative">
@@ -179,6 +302,41 @@
     </div>
 
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-30 hidden lg:hidden opacity-0 transition-opacity duration-300" onclick="toggleSidebar()"></div>
+
+    <!-- Toast: Format File Salah -->
+    <div id="format-error-toast">
+        <i class="fa-solid fa-circle-xmark text-red-600 text-xl"></i>
+        <span>Format File Salah! Pastikan tipe file sesuai pipeline.</span>
+    </div>
+
+    <!-- Custom Confirm Modal: Hapus Log -->
+    <div id="confirm-modal" role="dialog" aria-modal="true">
+        <div class="cm-card">
+            <div class="cm-icon-wrap">
+                <i class="fa-solid fa-trash-can text-2xl text-red-500"></i>
+            </div>
+            <div class="cm-title">Hapus Log Ini?</div>
+            <div class="cm-filename" id="cm-filename">—</div>
+            <div class="cm-subtitle">Tindakan ini permanen dan tidak dapat dibatalkan.</div>
+            <div class="cm-actions">
+                <button class="cm-btn-cancel" id="cm-btn-cancel">
+                    <i class="fa-solid fa-xmark mr-1"></i> Batal
+                </button>
+                <button class="cm-btn-delete" id="cm-btn-delete">
+                    <i class="fa-solid fa-trash-can"></i> Ya, Hapus
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notif Toast: Sukses / Error -->
+    <div id="notif-toast">
+        <i class="nt-icon fa-solid fa-check-circle"></i>
+        <div class="nt-body">
+            <div class="nt-title" id="nt-title">Berhasil</div>
+            <div class="nt-sub"  id="nt-sub">—</div>
+        </div>
+    </div>
 
     <div class="flex h-screen overflow-hidden p-2 md:p-4 gap-4">
 
@@ -291,11 +449,30 @@
                             <form id="uploadForm" enctype="multipart/form-data" class="space-y-6 relative">
                                 <div>
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Algoritma Parsing <span class="text-neo-red">*</span></label>
+                                    <div id="folder-name-container" class="mt-4">
+                                    <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Nama Folder / Materi <span class="text-neo-red">*</span></label>
+                                    <input type="text" name="folder_name" id="folder_name" placeholder="Contoh: matematika-bab-1" required
+                                        class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all">
+                                    <p class="text-[11px] font-bold text-gray-500 mt-1">Nama ini akan digunakan sebagai nama folder gambar dan file JSON.</p>
+                                </div>
                                     <select name="type" id="file_type" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                         <option value="kamus">Standar: Excel/CSV ke Array JSON</option>
                                         <option value="materi">Standar: PDF Ekstraksi Teks Dasar</option>
                                         <option value="pdf_to_excel">AI Vision: PDF ke Relasional Dataset (Kamus)</option>
                                     </select>
+                                    <div id="page-range-inputs" class="grid grid-cols-2 gap-4 mt-4 hidden">
+                                        <div>
+                                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Hal. Awal <span class="text-gray-400 normal-case">(opsional)</span></label>
+                                            <input type="number" name="page_start" id="page_start" placeholder="Contoh: 1" min="1"
+                                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all">
+                                        </div>
+                                        <div>
+                                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Hal. Akhir <span class="text-gray-400 normal-case">(opsional)</span></label>
+                                            <input type="number" name="page_end" id="page_end" placeholder="Contoh: 15" min="1"
+                                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all">
+                                        </div>
+                                        <p class="col-span-2 text-[11px] font-bold text-gray-500 mt-[-8px]">Gunakan ini untuk memecah PDF per Bab. Biarkan kosong untuk proses semua halaman.</p>
+                                    </div>
                                 </div>
 
                                 <div class="pt-2">
@@ -328,7 +505,7 @@
                                 History
                             </span>
                         </div>
-                        <div class="overflow-x-auto flex-1 font-body max-h-[500px] no-scrollbar">
+                        <div class="overflow-x-auto flex-1 font-body no-scrollbar">
                             <table class="w-full text-left border-collapse whitespace-nowrap">
                                 <thead class="sticky top-0 bg-p-xlt dark:bg-p-dark/40 z-10 shadow-[0_2px_0_0_#000] dark:shadow-[0_2px_0_0_#4C1D95]">
                                     <tr class="text-sm border-b-2 border-black dark:border-p-dark">
@@ -336,11 +513,12 @@
                                         <th class="px-4 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Size</th>
                                         <th class="px-4 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Kondisi</th>
                                         <th class="px-4 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Output</th>
+                                        <th class="px-4 py-4 text-xs font-black text-p-dark dark:text-purple-300 uppercase tracking-wider text-center">Hapus</th>
                                     </tr>
                                 </thead>
-                                <tbody class="divide-y-2 divide-p-lt dark:divide-p-dark/30 text-sm font-medium">
+                                <tbody id="log-table-body" class="divide-y-2 divide-p-lt dark:divide-p-dark/30 text-sm font-medium">
                                     @forelse($histories ?? [] as $history)
-                                    <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
+                                    <tr class="log-row hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group" data-id="{{ $history->id }}">
                                         <td class="px-5 py-4">
                                             <div class="font-bold text-black dark:text-white truncate max-w-[180px] text-sm" title="{{ $history->original_filename }}">{{ $history->original_filename }}</div>
                                             <div class="text-[10px] font-bold text-gray-500 dark:text-purple-300/60 mt-1 uppercase tracking-wider flex items-center gap-1.5">
@@ -378,10 +556,15 @@
                                                 </span>
                                             @endif
                                         </td>
+                                        <td class="px-4 py-4 text-center">
+                                            <button class="btn-hapus" onclick="hapusLog({{ $history->id }}, this)" title="Hapus log ini">
+                                                <i class="fa-solid fa-trash-can"></i> Del
+                                            </button>
+                                        </td>
                                     </tr>
                                     @empty
-                                    <tr>
-                                        <td colspan="4" class="px-6 py-16 text-center bg-white dark:bg-[#2d2460]">
+                                    <tr id="empty-row">
+                                        <td colspan="5" class="px-6 py-16 text-center bg-white dark:bg-[#2d2460]">
                                             <div class="inline-flex items-center justify-center w-14 h-14 bg-p-xlt dark:bg-p-dark/30 border-2 border-dashed border-p-mid rounded-xl text-p-mid mb-3">
                                                 <i class="fa-solid fa-server text-xl"></i>
                                             </div>
@@ -391,6 +574,11 @@
                                     @endforelse
                                 </tbody>
                             </table>
+                        </div>
+                        <!-- Pagination -->
+                        <div id="pagination-container" class="px-5 py-4 border-t-2 border-p-lt dark:border-p-dark flex items-center justify-between gap-3 bg-white dark:bg-[#2d2460]">
+                            <span id="pagination-info" class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 uppercase tracking-wider"></span>
+                            <div id="pagination-buttons" class="flex items-center gap-1.5"></div>
                         </div>
                     </div>
 
@@ -485,6 +673,7 @@
             fileInput.value = "";
             fileNameDisplay.innerText = "PILIH DOKUMEN";
             fileNameDisplay.classList.remove('text-neo-cyan', 'dark:text-cyan-400');
+            const pageRangeInputs = document.getElementById('page-range-inputs');
 
             // Resetting Base Styles
             dropZone.classList.remove('bg-neo-cyan', 'ai-active-glow', 'bg-opacity-20', 'dark:bg-cyan-900/30');
@@ -495,18 +684,21 @@
             aiBadge.classList.add('hidden');
 
             if (this.value === 'kamus') {
+                pageRangeInputs.classList.add('hidden');
                 fileInput.accept = ".xls,.xlsx,.csv";
                 fileIcon.className = "fa-solid fa-file-excel text-xl text-green-600";
                 fileRules.innerText = "Accept: .xls, .xlsx, .csv (Max: 512MB)";
                 submitBtn.innerHTML = '<i class="fa-solid fa-bolt"></i> Inisiasi Konversi Deterministik';
 
             } else if (this.value === 'materi') {
+                pageRangeInputs.classList.remove('hidden');
                 fileInput.accept = ".pdf";
                 fileIcon.className = "fa-solid fa-file-pdf text-xl text-red-500";
                 fileRules.innerText = "Accept: .pdf (Memisahkan Teks & Binary Image)";
                 submitBtn.innerHTML = '<i class="fa-solid fa-file-lines"></i> Jalankan Native PDF Parser';
 
             } else if (this.value === 'pdf_to_excel') {
+                pageRangeInputs.classList.remove('hidden');
                 fileInput.accept = ".pdf";
                 fileIcon.className = "fa-solid fa-robot text-2xl";
                 iconContainer.classList.add('text-neo-cyan');
@@ -522,16 +714,77 @@
 
         fileInput.addEventListener('change', function() {
             if (this.files.length > 0) {
-                fileNameDisplay.innerText = this.files[0].name;
+                const file = this.files[0];
+                if (!isValidFileFormat(file)) {
+                    showFormatError();
+                    this.value = '';
+                    fileNameDisplay.innerText = 'PILIH DOKUMEN';
+                    fileNameDisplay.classList.remove('text-neo-cyan', 'dark:text-cyan-400');
+                    return;
+                }
+                fileNameDisplay.innerText = file.name;
                 fileNameDisplay.classList.add('text-neo-cyan', 'dark:text-cyan-400');
             }
         });
 
         // ========================
-        // AJAX FORM KONTROL (TIDAK ADA PERUBAHAN LOGIC API)
+        // DRAG & DROP VALIDASI FORMAT
+        // ========================
+        function getAcceptedExtensions() {
+            const val = typeSelect.value;
+            if (val === 'kamus') return ['xls', 'xlsx', 'csv'];
+            return ['pdf'];
+        }
+
+        function isValidFileFormat(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            return getAcceptedExtensions().includes(ext);
+        }
+
+        function showFormatError() {
+            const toast = document.getElementById('format-error-toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3500);
+        }
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('border-p', 'bg-p-lt');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('border-p', 'bg-p-lt');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('border-p', 'bg-p-lt');
+            const files = e.dataTransfer.files;
+            if (!files || files.length === 0) return;
+            const file = files[0];
+            if (!isValidFileFormat(file)) {
+                showFormatError();
+                return;
+            }
+            // Assign ke file input
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            fileInput.files = dt.files;
+            fileNameDisplay.innerText = file.name;
+            fileNameDisplay.classList.add('text-neo-cyan', 'dark:text-cyan-400');
+        });
+
+        // ========================
+        // VALIDASI TAMBAHAN SAAT SUBMIT (CEGAH FORMAT SALAH LOLOS)
         // ========================
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
+
+            // Cek format sekali lagi sebelum submit
+            if (fileInput.files.length > 0 && !isValidFileFormat(fileInput.files[0])) {
+                showFormatError();
+                return;
+            }
 
             const form = this;
             const alertBox = document.getElementById('alert-container');
@@ -578,6 +831,171 @@
                 alertBox.classList.remove('hidden');
             }
         });
+
+        // ========================
+        // PAGINATION LOGIC
+        // ========================
+        const ROWS_PER_PAGE = 5;
+        let currentPage = 1;
+
+        function getAllRows() {
+            return Array.from(document.querySelectorAll('#log-table-body tr.log-row'));
+        }
+
+        function renderPagination() {
+            const rows = getAllRows();
+            const total = rows.length;
+            const totalPages = Math.max(1, Math.ceil(total / ROWS_PER_PAGE));
+
+            if (currentPage > totalPages) currentPage = totalPages;
+
+            // Show/hide rows
+            rows.forEach((row, i) => {
+                const page = Math.floor(i / ROWS_PER_PAGE) + 1;
+                row.style.display = (page === currentPage) ? '' : 'none';
+            });
+
+            // Update info
+            const start = total === 0 ? 0 : (currentPage - 1) * ROWS_PER_PAGE + 1;
+            const end   = Math.min(currentPage * ROWS_PER_PAGE, total);
+            document.getElementById('pagination-info').textContent = total > 0
+                ? `Menampilkan ${start}–${end} dari ${total} log`
+                : 'Tidak ada log';
+
+            // Render buttons
+            const btnContainer = document.getElementById('pagination-buttons');
+            btnContainer.innerHTML = '';
+
+            if (totalPages <= 1) return;
+
+            // Prev
+            const prevBtn = document.createElement('button');
+            prevBtn.className = 'pagination-btn';
+            prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left text-[10px]"></i>';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => { currentPage--; renderPagination(); };
+            btnContainer.appendChild(prevBtn);
+
+            // Pages
+            for (let p = 1; p <= totalPages; p++) {
+                const btn = document.createElement('button');
+                btn.className = 'pagination-btn' + (p === currentPage ? ' active' : '');
+                btn.textContent = p;
+                btn.onclick = ((pg) => () => { currentPage = pg; renderPagination(); })(p);
+                btnContainer.appendChild(btn);
+            }
+
+            // Next
+            const nextBtn = document.createElement('button');
+            nextBtn.className = 'pagination-btn';
+            nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right text-[10px]"></i>';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => { currentPage++; renderPagination(); };
+            btnContainer.appendChild(nextBtn);
+        }
+
+        // Init pagination on load
+        document.addEventListener('DOMContentLoaded', () => { renderPagination(); });
+        window.addEventListener('load', () => { renderPagination(); });
+
+        // ========================
+        // HAPUS LOG (AJAX DELETE) — Custom Modal
+        // ========================
+        let _hapusPendingId  = null;
+        let _hapusPendingBtn = null;
+        let _hapusPendingFilename = '';
+
+        const confirmModal   = document.getElementById('confirm-modal');
+        const cmFilename     = document.getElementById('cm-filename');
+        const cmBtnCancel    = document.getElementById('cm-btn-cancel');
+        const cmBtnDelete    = document.getElementById('cm-btn-delete');
+        const notifToast     = document.getElementById('notif-toast');
+        const ntIcon         = notifToast.querySelector('.nt-icon');
+        const ntTitle        = document.getElementById('nt-title');
+        const ntSub          = document.getElementById('nt-sub');
+
+        function showNotif(type, title, sub) {
+            notifToast.className = `show type-${type}`;
+            ntIcon.className = `nt-icon fa-solid ${type === 'success' ? 'fa-circle-check text-emerald-600' : 'fa-circle-xmark text-red-500'}`;
+            ntTitle.textContent = title;
+            ntSub.textContent   = sub;
+            clearTimeout(notifToast._timer);
+            notifToast._timer = setTimeout(() => { notifToast.classList.remove('show'); }, 3500);
+        }
+
+        function openConfirmModal(id, btn, filename) {
+            _hapusPendingId  = id;
+            _hapusPendingBtn = btn;
+            _hapusPendingFilename = filename;
+            cmFilename.textContent = filename || `Log #${id}`;
+            cmBtnDelete.disabled = false;
+            cmBtnDelete.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Hapus';
+            confirmModal.classList.add('active');
+        }
+
+        function closeConfirmModal() {
+            confirmModal.classList.remove('active');
+            _hapusPendingId  = null;
+            _hapusPendingBtn = null;
+        }
+
+        cmBtnCancel.addEventListener('click', closeConfirmModal);
+        confirmModal.addEventListener('click', (e) => { if (e.target === confirmModal) closeConfirmModal(); });
+
+        cmBtnDelete.addEventListener('click', async () => {
+            if (!_hapusPendingId) return;
+
+            const id  = _hapusPendingId;
+            const btn = _hapusPendingBtn;
+
+            cmBtnDelete.disabled = true;
+            cmBtnDelete.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i>'; }
+
+            try {
+                const deleteUrl = `{{ rtrim(route('converter.log.destroy', ['id' => '__ID__']), '') }}`.replace('__ID__', id);
+                const response = await fetch(deleteUrl, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                closeConfirmModal();
+
+                if (response.ok) {
+                    showNotif('success', 'Log Berhasil Dihapus', _hapusPendingFilename || `Log #${id}`);
+                    const row = btn ? btn.closest('tr.log-row') : document.querySelector(`tr.log-row[data-id="${id}"]`);
+                    if (row) {
+                        row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        row.style.opacity = '0';
+                        row.style.transform = 'translateX(24px)';
+                        setTimeout(() => {
+                            row.remove();
+                            if (getAllRows().length === 0) {
+                                const tbody = document.getElementById('log-table-body');
+                                tbody.innerHTML = `<tr id="empty-row"><td colspan="5" class="px-6 py-16 text-center bg-white dark:bg-[#2d2460]"><div class="inline-flex items-center justify-center w-14 h-14 bg-p-xlt dark:bg-p-dark/30 border-2 border-dashed border-p-mid rounded-xl text-p-mid mb-3"><i class="fa-solid fa-server text-xl"></i></div><p class="text-gray-500 dark:text-purple-300/50 font-bold text-xs uppercase tracking-widest">Log Eksekusi Bersih</p></td></tr>`;
+                            }
+                            renderPagination();
+                        }, 300);
+                    }
+                } else {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Del'; }
+                    showNotif('error', 'Gagal Menghapus', 'Server menolak permintaan. Coba lagi.');
+                }
+            } catch (err) {
+                closeConfirmModal();
+                if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-trash-can"></i> Del'; }
+                showNotif('error', 'Koneksi Error', 'Tidak dapat terhubung ke server.');
+            }
+        });
+
+        function hapusLog(id, btn) {
+            const row = btn.closest('tr.log-row');
+            const filename = row ? row.querySelector('.font-bold.text-black')?.textContent?.trim() : `Log #${id}`;
+            openConfirmModal(id, btn, filename);
+        }
 
         // Dark Mode Logic
         const themeToggleBtn = document.getElementById('theme-toggle');

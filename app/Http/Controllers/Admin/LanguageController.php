@@ -66,6 +66,58 @@ class LanguageController extends Controller
     }
 
     /**
+ * ✏️ UPDATE: Edit nama, kode, dan/atau ganti dataset
+ */
+public function update(Request $request, Language $language)
+{
+    $validated = $request->validate([
+        'name'    => 'required|string|max:50',
+        'code'    => 'required|string|max:20|unique:languages,code,' . $language->id,
+        'dataset' => 'nullable|file|mimes:json,txt|max:5120',
+    ]);
+
+    try {
+        $code = strtolower($validated['code']);
+
+        // Jika ada file dataset baru, proses dan ganti yang lama
+        if ($request->hasFile('dataset')) {
+            $file = $request->file('dataset');
+            $jsonContent = file_get_contents($file->getRealPath());
+            $decoded = json_decode($jsonContent, true);
+
+            if ($decoded === null) {
+                return back()->withErrors(['dataset' => 'File JSON tidak valid atau rusak!']);
+            }
+
+            $convertedData = $this->convertToFlatFormat($decoded);
+
+            // Hapus file lama jika ada
+            if ($language->json_file && Storage::disk('public')->exists($language->json_file)) {
+                Storage::disk('public')->delete($language->json_file);
+            }
+
+            $fileName = "dictionaries/kamus_{$code}.json";
+            Storage::disk('public')->put(
+                $fileName,
+                json_encode($convertedData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+            );
+
+            $language->json_file     = $fileName;
+            $language->version_hash  = md5(json_encode($convertedData));
+        }
+
+        $language->name = $validated['name'];
+        $language->code = $code;
+        $language->save();
+
+        return back()->with('success', "Bahasa {$validated['name']} berhasil diperbarui!");
+
+    } catch (\Exception $e) {
+        return back()->withErrors(['dataset' => 'Error: ' . $e->getMessage()]);
+    }
+}
+
+    /**
      * 🔄 LOGIC KONVERSI UNIVERSAL
      */
     private function convertToFlatFormat($data)
