@@ -348,30 +348,32 @@
                         </div>
                         
                         <div class="p-6">
-                            {{-- Zona Drop File (trigger custom alert jika format salah) --}}
-                            <div id="drop-zone"
-                                 class="mb-5 border-2 border-dashed border-p-mid dark:border-p-dark rounded-xl p-5 text-center transition-all cursor-default select-none"
-                                 ondragover="handleDragOver(event)"
-                                 ondragleave="handleDragLeave(event)"
-                                 ondrop="handleDrop(event)">
-                                <i class="fa-solid fa-cloud-arrow-up text-2xl text-p-mid mb-2 block"></i>
-                                <p class="text-xs font-bold text-gray-400 dark:text-purple-300/60">Drop file CSV/JSON untuk import batch</p>
-                                <p class="text-[10px] font-semibold text-gray-300 dark:text-purple-300/40 mt-1">Format: .csv atau .json saja</p>
-                                <input id="file-input" type="file" accept=".csv,.json" class="hidden" onchange="handleFileSelect(event)">
-                                <button type="button" onclick="document.getElementById('file-input').click()"
-                                        class="mt-3 px-4 py-1.5 bg-p-lt border-2 border-black dark:border-p-dark rounded-lg text-xs font-black text-p-dark dark:text-purple-200 shadow-neo-sm hover:bg-p hover:text-white transition-all">
-                                    Pilih File
-                                </button>
-                                <p id="file-name-display" class="mt-2 text-xs font-bold text-p-dark dark:text-purple-200 hidden"></p>
-                            </div>
-
-                            <form action="{{ route('regions.store') }}" method="POST" class="space-y-5" id="region-form">
+                            <form action="{{ route('regions.store') }}" method="POST" enctype="multipart/form-data" class="space-y-5" id="region-form">
                                 @csrf
+                                {{-- Zona Drop File --}}
+                                <div id="drop-zone"
+                                     class="mb-5 border-2 border-dashed border-p-mid dark:border-p-dark rounded-xl p-5 text-center transition-all cursor-default select-none"
+                                     ondragover="handleDragOver(event)"
+                                     ondragleave="handleDragLeave(event)"
+                                     ondrop="handleDrop(event)">
+                                    <i class="fa-solid fa-cloud-arrow-up text-2xl text-p-mid mb-2 block"></i>
+                                    <p class="text-xs font-bold text-gray-400 dark:text-purple-300/60">Drop file CSV/JSON untuk import batch</p>
+                                    <p class="text-[10px] font-semibold text-gray-300 dark:text-purple-300/40 mt-1">Format: .csv atau .json saja</p>
+                                    <input id="file-input" name="upload_file" type="file" accept=".csv,.json" class="hidden" onchange="handleFileSelect(event)">
+                                    <button type="button" onclick="document.getElementById('file-input').click()"
+                                            class="mt-3 px-4 py-1.5 bg-p-lt border-2 border-black dark:border-p-dark rounded-lg text-xs font-black text-p-dark dark:text-purple-200 shadow-neo-sm hover:bg-p hover:text-white transition-all">
+                                        Pilih File
+                                    </button>
+                                    <p id="file-name-display" class="mt-2 text-xs font-bold text-p-dark dark:text-purple-200 hidden"></p>
+                                    @error('upload_file')
+                                        <p class="mt-1 text-xs font-bold text-red-500">{{ $message }}</p>
+                                    @enderror
+                                </div>
                                 <div>
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Identifier Kode Pos</label>
                                     <div class="relative">
                                         <i class="fa-solid fa-envelopes-bulk absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
-                                        <input name="postal_code" type="text" placeholder="Contoh: 93572" required
+                                        <input name="postal_code" type="text" placeholder="Contoh: 93572"
                                                value="{{ old('postal_code') }}"
                                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold font-mono text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                                     </div>
@@ -384,7 +386,7 @@
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Area Entitas (Kec/Desa)</label>
                                     <div class="relative">
                                         <i class="fa-solid fa-map-location-dot absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
-                                        <input name="district_name" type="text" placeholder="Contoh: Kec. Ueesi" required
+                                        <input name="district_name" type="text" placeholder="Contoh: Kec. Ueesi"
                                                value="{{ old('district_name') }}"
                                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                                     </div>
@@ -397,7 +399,7 @@
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Indeks Bahasa Dominan</label>
                                     <div class="relative">
                                         <i class="fa-solid fa-language absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
-                                        <select name="language_code" required
+                                        <select name="language_code"
                                                 class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                             @foreach($languages ?? [] as $lang)
                                                 <option value="{{ $lang->code }}">{{ $lang->name }}</option>
@@ -623,6 +625,10 @@
                 showCustomAlert(`File "${file.name}" tidak didukung. Hanya format .csv atau .json yang diizinkan.`);
                 return;
             }
+            // Assign dropped files to the input
+            const fileInput = document.getElementById('file-input');
+            fileInput.files = e.dataTransfer.files;
+
             // If valid, show file name
             showFileName(file.name);
         }
@@ -642,6 +648,13 @@
             const display = document.getElementById('file-name-display');
             display.textContent = '✓ ' + name;
             display.classList.remove('hidden');
+
+            // Hapus required pada input manual jika file dipilih
+            const form = document.getElementById('region-form');
+            form.querySelectorAll('input[name="postal_code"], input[name="district_name"], select[name="language_code"]').forEach(el => {
+                el.removeAttribute('required');
+                el.classList.add('opacity-50'); // Beri visual feedback bahwa input manual non-aktif
+            });
         }
 
         // ════════════════════════════════════════════

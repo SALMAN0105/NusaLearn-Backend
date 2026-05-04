@@ -172,10 +172,6 @@
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
-                <a href="{{ route('assets.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-photo-film w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Library Aset</span>
-                </a>
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
                 <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
@@ -336,10 +332,14 @@
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-p-lt border-2 border-black text-p hover:bg-p hover:text-white transition-all shadow-neo-sm" title="Preview JSON">
                                                 <i class="fa-solid fa-code text-sm"></i>
                                             </button>
+                                            <button onclick="editQuestion({{ $q->id }}, '{{ $q->template_type }}', {{ json_encode($q->question_data) }}, {{ $q->material_id }}, {{ $q->difficulty_weight }})"
+                                                    class="w-8 h-8 rounded-lg flex items-center justify-center bg-neo-yellow border-2 border-black text-black hover:bg-yellow-400 transition-all shadow-neo-sm" title="Edit Soal">
+                                                <i class="fa-solid fa-pen-to-square text-sm"></i>
+                                            </button>
                                             @endif
-                                            <form action="{{ route('questions.destroy', $q->id) }}" method="POST" onsubmit="return confirm('Hapus soal ini?');">
+                                            <form id="delete-form-{{ $q->id }}" action="{{ route('questions.destroy', $q->id) }}" method="POST" class="inline">
                                                 @csrf @method('DELETE')
-                                                <button class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm">
+                                                <button type="button" onclick="confirmDelete('{{ $q->id }}')" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm">
                                                     <i class="fa-solid fa-trash-can text-sm"></i>
                                                 </button>
                                             </form>
@@ -802,17 +802,175 @@
     {{-- ═══════════════════════════════════════════════════════════════════ --}}
     {{-- MODAL C: JSON Preview Read-only                                     --}}
     {{-- ═══════════════════════════════════════════════════════════════════ --}}
-    <div id="modal-json-view" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
-        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-json-view')"></div>
-        <div class="modal-container modal-scroll-wrap bg-white dark:bg-[#2d2460] w-11/12 md:max-w-2xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 transform transition-all scale-95 opacity-0">
-            <div class="flex-shrink-0 pt-5 pb-4 px-6 border-b-2 border-black dark:border-p-dark flex justify-between items-center bg-[#1e1b4b] rounded-t-3xl">
-                <p class="text-white font-black text-sm flex items-center gap-2"><i class="fa-solid fa-code"></i> Question Data Preview</p>
-                <button onclick="toggleModal('modal-json-view')" class="w-7 h-7 flex items-center justify-center bg-white border-2 border-black text-black rounded-full hover:bg-neo-red transition-all text-xs">
-                    <i class="fa-solid fa-xmark"></i>
+    {{-- ═══════════════════════════════════════════════════════════════════ --}}
+    {{-- MODAL D: EDIT SOAL                                                --}}
+    {{-- ═══════════════════════════════════════════════════════════════════ --}}
+    <div id="modal-edit" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-edit')"></div>
+        <div class="modal-container modal-scroll-wrap bg-white dark:bg-[#2d2460] w-11/12 md:max-w-4xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 transform transition-all scale-95 opacity-0">
+            <div class="flex-shrink-0 pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-yellow rounded-t-3xl flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-pen-to-square text-black text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-black tracking-tight leading-none">Edit Soal</h3>
+                        <p class="text-[11px] font-bold text-black/70 mt-1" id="edit-template-label">Template: Pilihan Ganda</p>
+                    </div>
+                </div>
+                <button onclick="toggleModal('modal-edit')" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
-            <div class="modal-scroll-body p-6 bg-[#1e1b4b] rounded-b-3xl">
-                <pre class="json-preview text-neo-green" id="json-view-content"></pre>
+            <div class="modal-scroll-body px-8 py-8 bg-white dark:bg-[#2d2460] space-y-6">
+                <form id="edit-quiz-form" action="" method="POST" enctype="multipart/form-data" class="space-y-6">
+                    @csrf @method('PUT')
+                    <input type="hidden" name="template_type" id="edit-tpl-type">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Materi Induk</label>
+                            <select name="material_id" id="edit-material-id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
+                                @foreach($materials as $mat)
+                                    <option value="{{ $mat->id }}">{{ $mat->title_indo }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Bobot Kesulitan</label>
+                            <select name="difficulty_weight" id="edit-difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
+                                @for($i=1; $i<=5; $i++)
+                                    <option value="{{ $i }}">Level {{ $i }}</option>
+                                @endfor
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Teks Pertanyaan <span class="text-red-500">*</span></label>
+                        <textarea name="question_text_indo" id="edit-main-question-text" rows="2" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y" required></textarea>
+                    </div>
+
+                    {{-- Section templates (Multiple choice, etc) --}}
+                    <div id="edit-tpl-multiple_choice" class="edit-tpl-section hidden space-y-4">
+                        <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-cyan/30">
+                            <p class="text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Opsi Jawaban</p>
+                            @foreach(['A','B','C','D'] as $idx => $label)
+                            <div class="flex items-center gap-3 mb-3 p-3 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl">
+                                <span class="w-8 h-8 flex items-center justify-center bg-neo-cyan border-2 border-black rounded-lg font-black text-sm text-black flex-shrink-0">{{ $label }}</span>
+                                <input type="text" name="options[]" id="edit-opt-{{ $idx }}" class="flex-1 bg-p-xlt dark:bg-[#2d2460] border-2 border-black dark:border-p-dark rounded-xl px-3 py-2 text-sm font-bold text-black dark:text-white outline-none focus:border-p">
+                                <label class="flex items-center gap-2 cursor-pointer flex-shrink-0">
+                                    <input type="radio" name="correct_option" value="{{ $idx }}" id="edit-correct-{{ $idx }}" class="w-5 h-5 accent-violet-600 cursor-pointer">
+                                    <span class="text-xs font-black text-black dark:text-white whitespace-nowrap">Benar</span>
+                                </label>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+
+                    {{-- Drag & Drop --}}
+                    <div id="edit-tpl-drag_and_drop" class="edit-tpl-section hidden space-y-4">
+                        <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-pink/30">
+                            <p class="text-xs font-black text-black dark:text-white uppercase tracking-widest mb-1">Update Foto Item (Opsional)</p>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                @for($i = 0; $i < 4; $i++)
+                                <div class="flex flex-col items-center gap-2">
+                                    <div class="w-full aspect-square border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-white dark:bg-[#1e1b4b] relative overflow-hidden cursor-pointer flex items-center justify-center" onclick="document.getElementById('edit-dnd-file-{{ $i }}').click()">
+                                        <input type="file" name="dnd_images[]" id="edit-dnd-file-{{ $i }}" accept="image/*" class="hidden" onchange="previewEditDnd(this, {{ $i }})">
+                                        <img id="edit-dnd-prev-{{ $i }}" class="w-full h-full object-cover hidden absolute inset-0">
+                                        <div id="edit-dnd-ph-{{ $i }}" class="flex flex-col items-center gap-1">
+                                            <i class="fa-solid fa-camera text-xl text-gray-300"></i>
+                                        </div>
+                                    </div>
+                                    <button type="button" id="edit-dnd-btn-{{ $i }}" onclick="setEditDndCorrect({{ $i }})" class="w-full text-[10px] font-black py-1 px-2 border-2 border-black rounded-lg bg-white shadow-neo-sm">Benar</button>
+                                </div>
+                                @endfor
+                            </div>
+                            <input type="hidden" name="dnd_correct_index" id="edit-dnd-correct-hidden">
+                            <input type="hidden" name="dnd_zones" id="edit-dnd-zones-hidden">
+                        </div>
+                    </div>
+
+                    {{-- Pasangkan --}}
+                    <div id="edit-tpl-matching_game" class="edit-tpl-section hidden space-y-4">
+                        <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-green/30">
+                            <div id="edit-match-pairs-container" class="space-y-3"></div>
+                            <button type="button" onclick="addEditMatchPair()" class="mt-3 text-sm font-bold text-p hover:underline">+ Tambah Pasangan</button>
+                        </div>
+                    </div>
+
+                    {{-- Isi Kosong --}}
+                    <div id="edit-tpl-fill_blank" class="edit-tpl-section hidden space-y-4">
+                        <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-yellow/30">
+                            <textarea name="fill_sentence" id="edit-fill-sentence-input" rows="2" oninput="parseEditFillBlanks()" class="w-full bg-white border-2 border-black rounded-xl px-4 py-3 text-sm font-bold outline-none"></textarea>
+                            <div id="edit-fill-blanks-answers" class="mt-4 space-y-3 hidden"></div>
+                        </div>
+                        <input type="hidden" name="word_bank" id="edit-wb-hidden">
+                    </div>
+
+                    {{-- Kuis Gambar --}}
+                    <div id="edit-tpl-image_quiz" class="edit-tpl-section hidden space-y-4">
+                        <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-coral/30">
+                            <div class="flex gap-5 items-start">
+                                <div class="w-40 h-40 border-2 border-dashed border-black rounded-xl bg-white relative overflow-hidden cursor-pointer flex items-center justify-center" onclick="document.getElementById('edit-imgq-file').click()">
+                                    <input type="file" name="main_image" id="edit-imgq-file" accept="image/*" class="hidden" onchange="previewEditImgQ(this)">
+                                    <img id="edit-imgq-preview" class="w-full h-full object-cover hidden absolute inset-0">
+                                    <div id="edit-imgq-ph" class="text-gray-300"><i class="fa-solid fa-image text-3xl"></i></div>
+                                </div>
+                                <div class="flex-1 space-y-2">
+                                    @foreach(['A','B','C','D'] as $idx => $label)
+                                    <div class="flex items-center gap-3 p-2 bg-white border-2 border-black rounded-xl">
+                                        <input type="text" name="options[]" id="edit-imgq-opt-{{ $idx }}" class="flex-1 bg-transparent text-sm font-bold outline-none">
+                                        <input type="radio" name="correct_option" value="{{ $idx }}" id="edit-imgq-correct-{{ $idx }}" class="w-4 h-4">
+                                    </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Penjelasan Jawaban</label>
+                        <textarea name="explanation" id="edit-explanation-text" rows="2" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y"></textarea>
+                    </div>
+
+                    <div class="flex justify-end pt-4 border-t-2 border-p-lt">
+                        <button type="submit" class="px-8 py-3 bg-neo-green border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 transition-all">
+                            Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    {{-- ═══════════════════════════════════════════════════════════════════ --}}
+    {{-- MODAL E: KONFIRMASI HAPUS (CUSTOM THEME)                             --}}
+    {{-- ═══════════════════════════════════════════════════════════════════ --}}
+    <div id="modal-delete" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[110]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-delete')"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-[120] transform transition-all scale-95 opacity-0">
+            <div class="flex-shrink-0 pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-red rounded-t-3xl flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-trash-can text-black text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-black tracking-tight leading-none">Hapus Soal?</h3>
+                    </div>
+                </div>
+                <button onclick="toggleModal('modal-delete')" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Apakah Anda yakin ingin menghapus soal ini? Tindakan ini tidak dapat dibatalkan dan data akan hilang permanen.</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="toggleModal('modal-delete')" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark text-black dark:text-white rounded-xl text-sm font-black shadow-neo-sm hover:translate-y-px transition-all">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="w-full sm:w-auto px-6 py-2.5 bg-neo-red border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 transition-all">
+                        Ya, Hapus Sekarang
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1285,6 +1443,177 @@
             textArea.disabled = false;
         }
     }
+    // ── Edit Question Logic ──────────────────────────────────────────────
+    function editQuestion(id, templateType, data, materialId, difficultyWeight) {
+        const modal = document.getElementById('modal-edit');
+        const form = document.getElementById('edit-quiz-form');
+        form.action = `/admin/questions/${id}`;
+        
+        document.getElementById('edit-tpl-type').value = templateType;
+        document.getElementById('edit-material-id').value = materialId;
+        document.getElementById('edit-difficulty').value = difficultyWeight;
+        document.getElementById('edit-main-question-text').value = data.question_text_indo || data.question_text || '';
+        document.getElementById('edit-explanation-text').value = data.explanation || '';
+        
+        const labels = {
+            'multiple_choice': 'Pilihan Ganda',
+            'drag_and_drop':   'Drag & Drop',
+            'matching_game':   'Pasangkan',
+            'fill_blank':      'Isi Kosong',
+            'image_quiz':      'Kuis Gambar',
+        };
+        document.getElementById('edit-template-label').textContent = 'Template: ' + (labels[templateType] || templateType);
+
+        // Hide all sections first
+        document.querySelectorAll('.edit-tpl-section').forEach(s => {
+            s.classList.add('hidden');
+            s.querySelectorAll('input, textarea, select').forEach(el => el.disabled = true);
+        });
+
+        const section = document.getElementById('edit-tpl-' + templateType);
+        if (section) {
+            section.classList.remove('hidden');
+            section.querySelectorAll('input, textarea, select').forEach(el => el.disabled = false);
+        }
+
+        // Populate template-specific fields
+        if (templateType === 'multiple_choice') {
+            const options = data.options || [];
+            options.forEach((opt, i) => {
+                const input = document.getElementById('edit-opt-' + i);
+                const radio = document.getElementById('edit-correct-' + i);
+                if (input) input.value = opt.text || '';
+                if (radio) radio.checked = opt.is_correct || (data.correct_answer_key === opt.id);
+            });
+        } else if (templateType === 'drag_and_drop') {
+            const items = data.items || [];
+            document.getElementById('edit-dnd-correct-hidden').value = items.findIndex(item => item.correct_zone) || 0;
+            items.forEach((item, i) => {
+                const prev = document.getElementById('edit-dnd-prev-' + i);
+                const ph = document.getElementById('edit-dnd-ph-' + i);
+                if (item.image_asset) {
+                    prev.src = '/storage/quiz-assets/' + item.image_asset;
+                    prev.classList.remove('hidden');
+                    ph.classList.add('hidden');
+                }
+                if (item.correct_zone) setEditDndCorrect(i);
+            });
+            document.getElementById('edit-dnd-zones-hidden').value = JSON.stringify(data.zones || []);
+        } else if (templateType === 'matching_game') {
+            const pairs = data.pairs || [];
+            const container = document.getElementById('edit-match-pairs-container');
+            container.innerHTML = '';
+            pairs.forEach((p, i) => {
+                const div = document.createElement('div');
+                div.className = 'grid grid-cols-[1fr_auto_1fr_auto] gap-3 items-center';
+                div.innerHTML = `
+                    <input type="text" name="pair_left[]" value="${p.left.text}" class="bg-white border-2 border-black rounded-xl px-3 py-2 text-sm font-bold">
+                    <span class="dark:text-white">↔</span>
+                    <input type="text" name="pair_right[]" value="${p.right.text}" class="bg-white border-2 border-black rounded-xl px-3 py-2 text-sm font-bold">
+                    <button type="button" onclick="this.parentElement.remove()" class="text-red-500">×</button>`;
+                container.appendChild(div);
+            });
+        } else if (templateType === 'fill_blank') {
+            document.getElementById('edit-fill-sentence-input').value = data.question_text_indo || data.question_text || '';
+            parseEditFillBlanks(data.correct_answers || []);
+            document.getElementById('edit-wb-hidden').value = JSON.stringify(data.word_bank || []);
+        } else if (templateType === 'image_quiz') {
+            if (data.main_image) {
+                const prev = document.getElementById('edit-imgq-preview');
+                prev.src = '/storage/quiz-assets/' + data.main_image;
+                prev.classList.remove('hidden');
+                document.getElementById('edit-imgq-ph').classList.add('hidden');
+            }
+            (data.options || []).forEach((opt, i) => {
+                const input = document.getElementById('edit-imgq-opt-' + i);
+                const radio = document.getElementById('edit-imgq-correct-' + i);
+                if (input) input.value = opt.text || '';
+                if (radio) radio.checked = opt.is_correct || (data.correct_answer_key === opt.id);
+            });
+        }
+
+        toggleModal('modal-edit');
+    }
+
+    function previewEditDnd(input, idx) {
+        const file = input.files[0];
+        if (!file) return;
+        const prev = document.getElementById('edit-dnd-prev-' + idx);
+        const ph = document.getElementById('edit-dnd-ph-' + idx);
+        const reader = new FileReader();
+        reader.onload = e => {
+            prev.src = e.target.result;
+            prev.classList.remove('hidden');
+            ph.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function setEditDndCorrect(idx) {
+        document.getElementById('edit-dnd-correct-hidden').value = idx;
+        for (let i = 0; i < 4; i++) {
+            const btn = document.getElementById('edit-dnd-btn-' + i);
+            if (btn) btn.classList.toggle('bg-neo-green', i === idx);
+        }
+    }
+
+    function addEditMatchPair() {
+        const container = document.getElementById('edit-match-pairs-container');
+        const div = document.createElement('div');
+        div.className = 'grid grid-cols-[1fr_auto_1fr_auto] gap-3 items-center';
+        div.innerHTML = `
+            <input type="text" name="pair_left[]" placeholder="Kiri" class="bg-white border-2 border-black rounded-xl px-3 py-2 text-sm font-bold">
+            <span class="dark:text-white">↔</span>
+            <input type="text" name="pair_right[]" placeholder="Kanan" class="bg-white border-2 border-black rounded-xl px-3 py-2 text-sm font-bold">
+            <button type="button" onclick="this.parentElement.remove()" class="text-red-500">×</button>`;
+        container.appendChild(div);
+    }
+
+    function parseEditFillBlanks(answers = []) {
+        const sentence = document.getElementById('edit-fill-sentence-input').value;
+        const blanks = (sentence.match(/___/g) || []).length;
+        const container = document.getElementById('edit-fill-blanks-answers');
+        container.innerHTML = '';
+        if (blanks > 0) {
+            container.classList.remove('hidden');
+            for (let i = 0; i < blanks; i++) {
+                const div = document.createElement('div');
+                div.className = 'flex items-center gap-3 p-2 bg-white border-2 border-black rounded-xl';
+                div.innerHTML = `
+                    <span class="font-black text-xs">${i+1}</span>
+                    <input type="text" name="fill_correct_answers[]" value="${answers[i] || ''}" placeholder="Jawaban..." class="flex-1 text-sm outline-none">`;
+                container.appendChild(div);
+            }
+        } else {
+            container.classList.add('hidden');
+        }
+    }
+
+    function previewEditImgQ(input) {
+        const file = input.files[0];
+        if (!file) return;
+        const prev = document.getElementById('edit-imgq-preview');
+        const ph = document.getElementById('edit-imgq-ph');
+        const reader = new FileReader();
+        reader.onload = e => {
+            prev.src = e.target.result;
+            prev.classList.remove('hidden');
+            ph.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    let deleteId = null;
+    function confirmDelete(id) {
+        deleteId = id;
+        toggleModal('modal-delete');
+    }
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+        if (deleteId) {
+            document.getElementById('delete-form-' + deleteId).submit();
+        }
+    });
     </script>
 </body>
 </html>

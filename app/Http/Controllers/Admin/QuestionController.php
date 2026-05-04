@@ -112,10 +112,235 @@ class QuestionController extends Controller
     // DESTROY
     // =========================================================================
 
-    public function destroy(Question $question)
+    public function update(Request $request, Question $question)
     {
-        $question->delete();
-        return back()->with('success', 'Soal berhasil dihapus.');
+        // Untuk sementara, kita gunakan storeManual logic atau similar
+        // Namun karena ini update, kita perlu menyesuaikan
+        
+        // Kita bisa refactor logic storeManual ke private method agar bisa dipakai bersama
+        return $this->updateManual($request, $question);
+    }
+
+    private function updateManual(Request $request, Question $question)
+    {
+        $validated = $request->validate([
+            'material_id'        => 'required|integer|exists:materials,id',
+            'template_type'      => 'required|in:multiple_choice,drag_and_drop,matching_game,fill_blank,image_quiz',
+            'difficulty_weight'  => 'required|integer|min:1|max:5',
+            'question_text_indo' => 'required|string|max:2000',
+            'explanation'        => 'nullable|string|max:2000',
+            'options'            => 'nullable|array|min:2|max:4',
+            'options.*'          => 'nullable|string|max:500',
+            'correct_option'     => 'nullable|integer|min:0|max:3',
+            'dnd_images'         => 'nullable|array|max:4',
+            'dnd_images.*'       => 'nullable|image|mimes:jpeg,png,webp|max:3072',
+            'dnd_correct_index'  => 'nullable|integer|min:0|max:3',
+            'dnd_zones'          => 'nullable|string',
+            'pair_left'          => 'nullable|array|min:2|max:10',
+            'pair_left.*'        => 'nullable|string|max:300',
+            'pair_right'         => 'nullable|array|min:2|max:10',
+            'pair_right.*'       => 'nullable|string|max:300',
+            'fill_sentence'           => 'nullable|string|max:2000',
+            'fill_correct_answers'    => 'nullable|array',
+            'fill_correct_answers.*'  => 'nullable|string|max:300',
+            'word_bank'               => 'nullable|string',
+            'main_image'         => 'nullable|image|mimes:jpeg,png,webp|max:3072',
+        ]);
+
+        $templateType   = $validated['template_type'];
+        $questionData   = $question->question_data ?? [];
+        $assetsRequired = $question->assets_required ?? [];
+        $correctKey     = $question->correct_answer_key;
+        $optionsJson    = $question->options_json;
+
+        // Logic build question_data (Mirip storeManual tapi update field yang ada)
+        // Kita bisa copy logic dari storeManual atau buat yang lebih generic
+        
+        switch ($templateType) {
+            case 'multiple_choice':
+                $options    = array_values(array_filter($request->input('options', []), 'strlen'));
+                $correctIdx = min((int) $request->input('correct_option', 0), count($options) - 1);
+                $letters     = ['a', 'b', 'c', 'd'];
+                $optionsJson = collect($options)->map(fn($txt, $i) => [
+                    'id'         => $letters[$i] ?? "opt_{$i}",
+                    'text'       => $txt,
+                    'is_correct' => $i === $correctIdx,
+                ])->values()->all();
+                $correctKey   = $letters[$correctIdx] ?? 'a';
+                $questionData = [
+                    'question_text_indo' => $validated['question_text_indo'],
+                    'template_type'      => 'multiple_choice',
+                    'options'            => $optionsJson,
+                    'correct_answer_key' => $correctKey,
+                    'explanation'        => $validated['explanation'] ?? null,
+                    'assets_required'    => [],
+                ];
+                break;
+
+            case 'drag_and_drop':
+                $correctIdx = (int) $request->input('dnd_correct_index', -1);
+                $dndZones   = json_decode($request->input('dnd_zones', '[]'), true) ?? [];
+                
+                $items      = $questionData['items'] ?? [];
+                $imageFiles = $request->file('dnd_images', []);
+                
+                // Jika ada upload baru, update assetsRequired dan items
+                foreach ($imageFiles as $i => $file) {
+                    if (!$file || !$file->isValid()) continue;
+                    $hash     = md5_file($file->getRealPath());
+                    $ext      = $file->getClientOriginalExtension() ?: 'jpg';
+                    $filename = $hash . '.' . $ext;
+                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
+                        $file->storeAs('quiz-assets', $filename, 'public');
+                    }
+                    \App\Models\AssetLibrary::firstOrCreate(
+                        ['filename' => $filename],
+                        ['original_name' => $file->getClientOriginalName(), 'mime_type' => $file->getMimeType(), 'is_active' => true]
+                    );
+                    
+                    if (!in_array($filename, $assetsRequired)) {
+                        $assetsRequired[] = $filename;
+                    }
+                    
+                    // Update item di index tersebut atau tambah jika baru
+                    $items[$i] = [
+                        'id'          => 'item_' . ($i + 1),
+                        'image_asset' => $filename,
+                        'correct_zone'=> null, // Reset dulu, akan di-set di bawah
+                    ];
+                }
+                
+                // Re-set correct zone berdasarkan index yang dipilih
+                foreach($items as $i => &$item) {
+                    $item['correct_zone'] = ($i === $correctIdx) ? 'zone_1' : null;
+                }
+
+                $zones = [];
+                if (!empty($dndZones)) {
+                    foreach ($dndZones as $j => $zoneLabel) {
+                        $zones[] = ['id' => 'zone_' . ($j + 1), 'label' => $zoneLabel];
+                    }
+                } else {
+                    $zones[] = ['id' => 'zone_1', 'label' => 'Zona Jawaban'];
+                }
+
+                $correctMapping = [];
+                foreach ($items as $item) {
+                    if ($item['correct_zone']) {
+                        $correctMapping[$item['id']] = $item['correct_zone'];
+                    }
+                }
+
+                $questionData = [
+                    'question_text_indo' => $validated['question_text_indo'],
+                    'template_type'      => 'drag_and_drop',
+                    'items'              => $items,
+                    'zones'              => $zones,
+                    'correct_mapping'    => $correctMapping,
+                    'explanation'        => $validated['explanation'] ?? null,
+                    'assets_required'    => $assetsRequired,
+                ];
+                break;
+
+            case 'matching_game':
+                $lefts  = array_values(array_filter($request->input('pair_left', []), 'strlen'));
+                $rights = array_values(array_filter($request->input('pair_right', []), 'strlen'));
+                $count  = min(count($lefts), count($rights));
+                $pairs = $correctPairs = [];
+                for ($i = 0; $i < $count; $i++) {
+                    $leftId  = 'L' . ($i + 1);
+                    $rightId = 'R' . ($i + 1);
+                    $pairs[] = [
+                        'left'  => ['id' => $leftId,  'text' => $lefts[$i]],
+                        'right' => ['id' => $rightId, 'text' => $rights[$i]],
+                    ];
+                    $correctPairs[] = ['left' => $leftId, 'right' => $rightId];
+                }
+                $questionData = [
+                    'question_text_indo' => $validated['question_text_indo'],
+                    'template_type'      => 'matching_game',
+                    'pairs'              => $pairs,
+                    'correct_pairs'      => $correctPairs,
+                    'explanation'        => $validated['explanation'] ?? null,
+                    'assets_required'    => [],
+                ];
+                break;
+
+            case 'fill_blank':
+                $sentence       = $request->input('fill_sentence', $validated['question_text_indo']);
+                $correctAnswers = array_values(array_filter($request->input('fill_correct_answers', []), 'strlen'));
+                $wordBankRaw    = json_decode($request->input('word_bank', '[]'), true) ?? [];
+                $wordBank       = array_values(array_filter($wordBankRaw, 'strlen'));
+                
+                $blanks = [];
+                foreach ($correctAnswers as $i => $ans) {
+                    $blanks[] = ['id' => 'blank_' . ($i + 1), 'correct_answer' => $ans, 'hint' => null];
+                    if (!in_array($ans, $wordBank)) $wordBank[] = $ans;
+                }
+                shuffle($wordBank);
+                $questionData = [
+                    'question_text_indo' => $sentence,
+                    'template_type'      => 'fill_blank',
+                    'blanks'             => $blanks,
+                    'word_bank'          => $wordBank,
+                    'correct_answers'    => $correctAnswers,
+                    'explanation'        => $validated['explanation'] ?? null,
+                    'assets_required'    => [],
+                ];
+                break;
+
+            case 'image_quiz':
+                $mainImageFilename = $questionData['main_image'] ?? null;
+                if ($request->hasFile('main_image') && $request->file('main_image')->isValid()) {
+                    $file     = $request->file('main_image');
+                    $hash     = md5_file($file->getRealPath());
+                    $ext      = $file->getClientOriginalExtension() ?: 'jpg';
+                    $filename = $hash . '.' . $ext;
+                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
+                        $file->storeAs('quiz-assets', $filename, 'public');
+                    }
+                    \App\Models\AssetLibrary::firstOrCreate(
+                        ['filename' => $filename],
+                        ['original_name' => $file->getClientOriginalName(), 'mime_type' => $file->getMimeType(), 'is_active' => true]
+                    );
+                    $mainImageFilename = $filename;
+                    if (!in_array($filename, $assetsRequired)) {
+                        $assetsRequired[] = $filename;
+                    }
+                }
+                $options    = array_values(array_filter($request->input('options', []), 'strlen'));
+                $correctIdx = min((int) $request->input('correct_option', 0), max(count($options) - 1, 0));
+                $letters    = ['a', 'b', 'c', 'd'];
+                $optionsJson = collect($options)->map(fn($txt, $i) => [
+                    'id'         => $letters[$i] ?? "opt_{$i}",
+                    'text'       => $txt,
+                    'is_correct' => $i === $correctIdx,
+                ])->values()->all();
+                $correctKey   = $letters[$correctIdx] ?? 'a';
+                $questionData = [
+                    'question_text_indo' => $validated['question_text_indo'],
+                    'template_type'      => 'image_quiz',
+                    'main_image'         => $mainImageFilename,
+                    'options'            => $optionsJson,
+                    'correct_answer_key' => $correctKey,
+                    'explanation'        => $validated['explanation'] ?? null,
+                    'assets_required'    => $assetsRequired,
+                ];
+                break;
+        }
+
+        $question->update([
+            'material_id'        => $validated['material_id'],
+            'template_type'      => $templateType,
+            'difficulty_weight'  => $validated['difficulty_weight'],
+            'question_text_indo' => $validated['question_text_indo'],
+            'question_data'      => $questionData,
+            'assets_required'    => $assetsRequired,
+            'correct_answer_key' => $correctKey,
+            'options_json'       => $optionsJson,
+        ]);
+
+        return back()->with('success', "Soal berhasil diperbarui!");
     }
 
     // =========================================================================

@@ -9,7 +9,7 @@ use App\Models\FileConversion;
 use App\Exports\KamusExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
+
 use Illuminate\Support\Str;
 use OpenAI;
 
@@ -18,26 +18,6 @@ class ContentConversionController extends Controller
     private $pdfToTextPath = 'C:\\Program Files\\poppler-25.12.0\\Library\\bin\\pdftotext.exe';
     private $pdfImagesPath = 'C:\\Program Files\\poppler-25.12.0\\Library\\bin\\pdfimages.exe';
 
-    private array $pageNumberPatterns = [
-        '/^\d+\s+Matematika\s+untuk\s+SD\/MI\s+Kelas\s+\w+$/i',
-        '/^\d+\s+Ayo\s+\w+.*\d+$/i',
-        '/^\d+\s+[\w\s]+\s+untuk\s+SD\/MI.*$/i',
-        '/^[\w\s]+\s+untuk\s+SD\/MI\s+Kelas\s+\w+\s+\d+$/i',
-        '/^\d{1,3}$/',
-        '/^\d+\s+\w[\w\s]{2,40}\d+$/',
-    ];
-
-    private array $exerciseKeywords = [
-        'Ayo Mencoba', 'Ayo Berlatih', 'Ayo Berdiskusi',
-        'Ayo Mengamati', 'Ayo Membaca', 'Ayo Menulis',
-        'Tuliskan', 'Gambarlah', 'Isilah', 'Hitunglah',
-        'Selesaikan', 'Kerjakanlah', 'Diskusikan',
-    ];
-
-    // =========================================================================
-    // [PERBAIKAN #2] Flag untuk deteksi baris data setelah header tabel
-    // =========================================================================
-    private bool $lastWasTableHeader = false;
 
     public function index()
     {
@@ -156,7 +136,7 @@ class ContentConversionController extends Controller
 
                 $client = OpenAI::factory()
                     ->withApiKey(env('OPENAI_API_KEY'))
-                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.openai.com/v1'))
+                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.chatanywhere.tech/v1'))
                     ->make();
 
                 $response = $client->chat()->create([
@@ -210,7 +190,7 @@ class ContentConversionController extends Controller
                 $pageStart = $request->input('page_start');
                 $pageEnd   = $request->input('page_end');
 
-                // ── 1. Ekstrak Teks
+                // â”€â”€ 1. Ekstrak Teks
                 $textArgs = [$this->pdfToTextPath, '-layout'];
                 if ($pageStart) array_push($textArgs, '-f', $pageStart);
                 if ($pageEnd)   array_push($textArgs, '-l', $pageEnd);
@@ -224,7 +204,7 @@ class ContentConversionController extends Controller
                 }
                 $rawExtractedOutput = $processText->getOutput();
 
-                // ── 2. Ekstrak Gambar
+                // â”€â”€ 2. Ekstrak Gambar
                 $imageOutputDir = storage_path('app/public/assets/' . $folderName);
                 if (!file_exists($imageOutputDir)) {
                     mkdir($imageOutputDir, 0755, true);
@@ -245,71 +225,187 @@ class ContentConversionController extends Controller
                 $processImages->run();
 
                 // =========================================================================
-                // [PERBAIKAN #1] Ekstrak gambar + generate alt-text via GPT-4o Vision
-                // Sebelumnya: alt_text hanya "Ilustrasi [folder] bagian [n]" (tidak deskriptif)
-                // Sekarang:   setiap gambar dikirim ke GPT-4o untuk deskripsi otomatis
+                // PHASE 1: Defensive Image Pre-Filtering (Local)
+                // Filter images by minimum dimensions and aspect ratio before sending
+                // to the Vision API to prevent hallucinations from decorative elements.
+                // Threshold: min 100px on each side, skewed ratios discarded.
+                // File-size is NOT used as a filter â€” AI Vision will decide relevance.
                 // =========================================================================
                 $client = OpenAI::factory()
                     ->withApiKey(env('OPENAI_API_KEY'))
-                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.openai.com/v1'))
+                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.chatanywhere.tech/v1'))
                     ->make();
 
+                $validImageFiles = [];
+                foreach (glob($tempImgDir . '/*.*') as $imgFile) {
+                    // Suppress errors on corrupt/unreadable files
+                    $imageInfo = @getimagesize($imgFile);
+
+                    if ($imageInfo === false) {
+                        unlink($imgFile);
+                        continue;
+                    }
+
+                    $width  = $imageInfo[0];
+                    $height = $imageInfo[1];
+
+                    // Discard images that are too small (under 100px on either side)
+                    if ($width < 100 || $height < 100) {
+                        unlink($imgFile);
+                        continue;
+                    }
+
+                    // Discard images with extremely skewed aspect ratios (banners, borders, icons)
+                    $ratio = $width / $height;
+                    if ($ratio > 4.0 || $ratio < 0.25) {
+                        unlink($imgFile);
+                        continue;
+                    }
+
+                    $validImageFiles[] = $imgFile;
+                }
+
+                // =========================================================================
+                // PHASE 2: Batch Vision API Call (Single Request for All Images)
+                // Step A â€” Rename files, register assets, build base64 payload map.
+                // Step B â€” Send ALL images in one chat()->create() call after the loop.
+                // =========================================================================
                 $extractedImages = [];
                 $imgCount        = 1;
-                foreach (glob($tempImgDir . '/*.*') as $imgFile) {
-                    $size = filesize($imgFile);
-                    if ($size > 5120) {
-                        $ext         = pathinfo($imgFile, PATHINFO_EXTENSION);
-                        $newFileName = $folderName . '_img_' . $imgCount . '.' . $ext;
-                        $newFilePath = $imageOutputDir . DIRECTORY_SEPARATOR . $newFileName;
-                        rename($imgFile, $newFilePath);
+                // Map: newFileName => ['relativeFilename', 'newFilePath', 'dataUri', 'index']
+                $imagePayloads   = [];
 
-                        $relativeFilename = 'assets/' . $folderName . '/' . $newFileName;
+                // â”€â”€ Step A: Rename + encode each image; register asset in DB
+                foreach ($validImageFiles as $imgFile) {
+                    $ext         = pathinfo($imgFile, PATHINFO_EXTENSION);
+                    $newFileName = $folderName . '_img_' . $imgCount . '.' . $ext;
+                    $newFilePath = $imageOutputDir . DIRECTORY_SEPARATOR . $newFileName;
+                    rename($imgFile, $newFilePath);
 
-                        // Generate alt-text deskriptif via Vision
-                        $altText = $this->generateImageAltText($client, $newFilePath, $folderName);
+                    $relativeFilename = 'assets/' . $folderName . '/' . $newFileName;
+                    $mimeType         = mime_content_type($newFilePath);
+                    $dataUri          = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($newFilePath));
 
-                        $extractedImages[] = [
-                            'filename' => $relativeFilename,
-                            'name'     => $newFileName,
-                            'path'     => $newFilePath,
-                            'index'    => $imgCount,
-                            'alt_text' => $altText, // [BARU] alt-text deskriptif
+                    $imagePayloads[$newFileName] = [
+                        'relativeFilename' => $relativeFilename,
+                        'newFilePath'      => $newFilePath,
+                        'dataUri'          => $dataUri,
+                        'index'            => $imgCount,
+                    ];
+
+                    \App\Models\AssetLibrary::firstOrCreate(
+                        ['filename' => $relativeFilename],
+                        [
+                            'original_name' => $newFileName,
+                            'asset_type'    => 'image',
+                            'extension'     => strtolower($ext),
+                            'mime_type'     => $mimeType,
+                            'size_kb'       => round(filesize($newFilePath) / 1024),
+                            'source_api'    => 'manual',
+                            'tags'          => explode('-', $folderName),
+                            'is_active'     => true,
+                        ]
+                    );
+
+                    $imgCount++;
+                }
+
+                // â”€â”€ Step B: Single batch Vision API call for all images
+                $batchCaptions = []; // Map: newFileName => captionString
+                if (!empty($imagePayloads)) {
+                    try {
+                        $visionSystemPrompt = 'Anda adalah sistem ekstraksi materi edukasi. '
+                            . 'JANGAN mendeskripsikan elemen dekoratif, nomor halaman, ikon kecil, atau background. '
+                            . 'JANGAN buat objek chunk untuk angka tunggal atau simbol. '
+                            . 'HANYA hasilkan JSON murni tanpa markdown berisikan teks paragraf utama dan ilustrasi penting. '
+                            . 'Gunakan skema berikut PERSIS: '
+                            . '{"content_structured":[{"section":"Nama Bab/Sub-bab","chunks":['
+                            . '{"id":"c1","type":"paragraph","content":"Isi teks paragraf di sini secara utuh."},'
+                            . '{"id":"c2","type":"image","url":"nama_file_gambar_yang_relevan.jpg",'
+                            . '"caption":"Deskripsi singkat namun bermakna tentang gambar ini."}]}]}';
+
+                        // Build user content: prefix text + one image_url block per image
+                        $userContent = [
+                            [
+                                'type' => 'text',
+                                'text' => 'Berikut adalah ' . count($imagePayloads) . ' gambar dari materi edukasi. '
+                                        . 'Untuk SETIAP gambar, berikan caption 1-2 kalimat dalam bahasa Indonesia: '
+                                        . 'apa yang digambar, detail penting, dan fungsi pedagogisnya. '
+                                        . 'Kembalikan HANYA JSON: {"captions":{"nama_file_1.ext":"caption 1","nama_file_2.ext":"caption 2"}}. '
+                                        . 'Jika gambar adalah elemen dekoratif, ikon kecil, atau tidak relevan secara edukatif, '
+                                        . 'isi nilainya dengan string kosong "".',
+                            ],
                         ];
 
-                        \App\Models\AssetLibrary::firstOrCreate(
-                            ['filename' => $relativeFilename],
-                            [
-                                'original_name' => $newFileName,
-                                'asset_type'    => 'image',
-                                'extension'     => strtolower($ext),
-                                'mime_type'     => mime_content_type($newFilePath),
-                                'size_kb'       => round(filesize($newFilePath) / 1024),
-                                'source_api'    => 'manual',
-                                'tags'          => explode('-', $folderName),
-                                'is_active'     => true,
-                            ]
-                        );
-                        $imgCount++;
-                    } else {
-                        unlink($imgFile);
+                        foreach ($imagePayloads as $fileName => $payload) {
+                            $userContent[] = [
+                                'type' => 'text',
+                                'text' => 'Gambar: ' . $fileName,
+                            ];
+                            $userContent[] = [
+                                'type'      => 'image_url',
+                                'image_url' => ['url' => $payload['dataUri'], 'detail' => 'low'],
+                            ];
+                        }
+
+                        $visionResponse = $client->chat()->create([
+                            'model'      => 'gpt-4o',
+                            'max_tokens' => 150 * count($imagePayloads),
+                            'messages'   => [
+                                ['role' => 'system', 'content' => $visionSystemPrompt],
+                                ['role' => 'user',   'content' => $userContent],
+                            ],
+                        ]);
+
+                        $visionJson    = json_decode($visionResponse->choices[0]->message->content, true);
+                        $batchCaptions = $visionJson['captions'] ?? [];
+                    } catch (\Throwable $e) {
+                        // Batch call failed â€” all images fall back to generic caption
+                        $batchCaptions = [];
                     }
                 }
 
+                // â”€â”€ Step C: Assemble $extractedImages using captions from the batch response
+                foreach ($imagePayloads as $fileName => $payload) {
+                    $caption = trim($batchCaptions[$fileName] ?? '');
+                    // If AI returned empty string (decorative), use a neutral fallback
+                    $altText = ($caption !== '')
+                        ? $caption
+                        : 'Ilustrasi materi ' . str_replace('-', ' ', $folderName) . '.';
+
+                    $extractedImages[] = [
+                        'filename' => $payload['relativeFilename'],
+                        'name'     => $fileName,
+                        'path'     => $payload['newFilePath'],
+                        'index'    => $payload['index'],
+                        'alt_text' => $altText,
+                    ];
+                }
+
+                // Cleanup any remaining temp files and the temp directory
                 foreach (glob($tempImgDir . '/*.*') as $f) {
                     if (is_file($f)) unlink($f);
                 }
                 @rmdir($tempImgDir);
 
-                // ── 3. CHUNKER RAPI
-                $chunks = $this->buildCleanChunks($rawExtractedOutput, $extractedImages, $folderName);
-
-                // ── 4. AI PROCESSING
+                // â”€â”€ 4. AI PROCESSING (LLM-Driven Structuring)
+                // Send raw text + image manifest to GPT-4o-mini. The LLM builds the
+                // complete content_structured array directly, replacing local chunking.
                 $safeTextForAI = substr(clean_pdf_text($rawExtractedOutput), 0, 10000);
 
-                $systemPrompt = <<<'PROMPT'
-Anda adalah analis teks buku teks edukasi. Analisis teks berikut dan kembalikan HANYA JSON valid
-tanpa markdown, tanpa komentar, dengan struktur PERSIS seperti ini:
+                // Build image manifest JSON for the LLM
+                $imageManifest = [];
+                foreach ($extractedImages as $img) {
+                    $imageManifest[] = [
+                        'url'      => $img['filename'],
+                        'alt_text' => $img['alt_text'],
+                    ];
+                }
+                $imageManifestJson = json_encode($imageManifest, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+                $systemPrompt = <<<PROMPT
+Anda adalah analis teks buku teks edukasi. Analisis teks mentah dan daftar gambar yang diberikan.
+Kembalikan HANYA JSON valid tanpa markdown, tanpa komentar, dengan struktur PERSIS seperti ini:
 {
   "metadata": {
     "title": "Judul lengkap buku/materi",
@@ -328,45 +424,49 @@ tanpa markdown, tanpa komentar, dengan struktur PERSIS seperti ini:
     "entity_relations": [ "Relasi antar entitas" ],
     "themes": [ "Tema utama" ]
   },
-  "sections": [
+  "content_structured": [
     {
-      "name": "Nama Section",
-      "section_type": "intro",
-      "description": "Deskripsi singkat isi section",
-      "heading_marker": "Kata kunci heading yang menandai awal section ini di teks"
+      "section_id": "sec-001",
+      "section": "Nama Bab",
+      "section_type": "intro/concept/example/summary",
+      "chunks": [
+        {"id": "c1", "type": "paragraph", "content": "Teks materi..."},
+        {"id": "c2", "type": "table", "headers": ["Puluhan", "Satuan"], "rows": [["2","6"],["3","2"]]},
+        {"id": "img-01", "type": "image", "url": "assets/folder/file.jpg", "alt_text": "Deskripsi gambar", "caption": ""}
+      ]
     }
   ]
 }
 
-Nilai "section_type" WAJIB salah satu dari: "intro", "concept", "example", "summary".
-Field "heading_marker" WAJIB diisi — tulis kata pertama dari judul/heading yang menandai awal section.
-Buat section berdasarkan topik/bab yang terdeteksi di teks.
-
-INSTRUKSI KHUSUS NUMERASI: 
-Jika materi mengandung deret angka, persamaan, atau tabel nilai tempat matematika, JANGAN menggabungkannya menjadi paragraf kacau. Restrukturisasi deret tersebut ke dalam "key_concepts" atau masukkan ke deskripsi "sections" secara logis dan terstruktur. Abaikan anomali nomor halaman acak.
+INSTRUKSI PENTING:
+- Format ulang teks mentah menjadi array chunks yang rapi.
+- Jika menemukan deret angka atau tabel nilai tempat (seperti Puluhan dan Satuan), WAJIB ubah menjadi chunk dengan type: "table" yang memiliki "headers" dan "rows".
+- Sisipkan chunk type: "image" di lokasi yang tepat berdasarkan konteks teks, menggunakan data daftar gambar yang saya berikan. Gunakan "url" dan "alt_text" PERSIS dari daftar gambar.
+- Nilai "section_type" WAJIB salah satu dari: "intro", "concept", "example", "summary".
+- JANGAN mendeskripsikan elemen dekoratif, nomor halaman, ikon kecil, atau background.
+- JANGAN buat chunk untuk angka tunggal, simbol, atau nomor halaman.
+- Abaikan anomali nomor halaman acak.
 PROMPT;
+
+                $userMessage = "TEKS MENTAH:\n" . $safeTextForAI
+                    . "\n\nDAFTAR GAMBAR TERSEDIA:\n" . $imageManifestJson;
 
                 $response = $client->chat()->create([
                     'model'           => 'gpt-4o-mini',
                     'response_format' => ['type' => 'json_object'],
                     'messages'        => [
                         ['role' => 'system', 'content' => $systemPrompt],
-                        ['role' => 'user',   'content' => $safeTextForAI],
+                        ['role' => 'user',   'content' => $userMessage],
                     ],
                 ]);
 
                 $aiData = json_decode($response->choices[0]->message->content, true);
 
                 // =========================================================================
-                // [PERBAIKAN #3] Distribusi Chunk ke Section berdasarkan HEADING, bukan merata
-                // Sebelumnya: array_slice($chunks, $start, $chunksPerSection) — dibagi rata
-                // Sekarang:   setiap chunk heading baru memicu pergantian section
+                // PHASE 3: JSON Post-Processing & Sanitization
                 // =========================================================================
-                $aiSections        = $aiData['sections'] ?? [['name' => 'Konten Utama', 'section_type' => 'concept', 'description' => '', 'heading_marker' => '']];
-                $contentStructured = [];
-                $seenContents      = [];
-
-                $contentStructured = $this->distributeChunksByHeading($chunks, $aiSections, $seenContents);
+                $contentStructured = $aiData['content_structured'] ?? [];
+                $contentStructured = $this->sanitizeContentChunks($contentStructured);
 
                 $jsonResult = [
                     'metadata' => [
@@ -433,503 +533,64 @@ PROMPT;
     }
 
     // =========================================================================
-    // [BARU — PERBAIKAN #1] Generate alt-text gambar via GPT-4o Vision
-    // Menggantikan teks generik "Ilustrasi [folder] bagian [n]"
+    // PHASE 3: Sanitize content_structured chunks from LLM output
+    // Removes hallucinated images and trivial paragraphs, re-indexes arrays.
     // =========================================================================
-    private function generateImageAltText($client, string $imagePath, string $folderName): string
+    private function sanitizeContentChunks(array $contentStructured): array
     {
-        try {
-            $mimeType   = mime_content_type($imagePath);
-            $base64Img  = base64_encode(file_get_contents($imagePath));
-            $dataUri    = "data:{$mimeType};base64,{$base64Img}";
+        $hallucPatterns = [
+            'tidak tersedia',
+            'tidak ada deskripsi',
+            'dekoratif',
+            'description not available',
+        ];
 
-            $visionResponse = $client->chat()->create([
-                'model'     => 'gpt-4o',
-                'max_tokens' => 150,
-                'messages'  => [
-                    [
-                        'role'    => 'user',
-                        'content' => [
-                            [
-                                'type' => 'text',
-                                'text' => 'Deskripsikan gambar ini dalam 1-2 kalimat sebagai alt-text untuk buku teks SD. '
-                                        . 'Sebutkan: apa yang digambar, detail penting (jumlah benda jika ada), '
-                                        . 'dan fungsi pedagogisnya. Gunakan bahasa Indonesia.',
-                            ],
-                            [
-                                'type'      => 'image_url',
-                                'image_url' => ['url' => $dataUri, 'detail' => 'low'],
-                            ],
-                        ],
-                    ],
-                ],
-            ]);
+        foreach ($contentStructured as $sectionIndex => $section) {
+            $rawChunks = $section['chunks'] ?? [];
 
-            return trim($visionResponse->choices[0]->message->content);
-        } catch (\Throwable $e) {
-            // Fallback jika vision gagal — tetap lebih deskriptif dari sebelumnya
-            return 'Ilustrasi materi ' . str_replace('-', ' ', $folderName) . ' — deskripsi tidak tersedia.';
-        }
-    }
+            foreach ($rawChunks as $chunkIndex => $chunk) {
+                $type = $chunk['type'] ?? '';
 
-    // =========================================================================
-    // [BARU — PERBAIKAN #3] Distribusi chunk ke section berdasarkan heading_marker
-    // Menggantikan pembagian rata array_slice($chunks, $start, $chunksPerSection)
-    // =========================================================================
-    private function distributeChunksByHeading(array $chunks, array $aiSections, array &$seenContents): array
-    {
-        $totalSections     = count($aiSections);
-        $contentStructured = [];
+                if ($type === 'image') {
+                    $caption  = mb_strtolower(trim($chunk['caption']  ?? ''));
+                    $altText  = mb_strtolower(trim($chunk['alt_text'] ?? ''));
+                    $checkStr = $caption . ' ' . $altText;
 
-        if ($totalSections === 0) return [];
+                    $isHallucinated = empty(trim($checkStr));
+                    if (!$isHallucinated) {
+                        foreach ($hallucPatterns as $pattern) {
+                            if (str_contains($checkStr, $pattern)) {
+                                $isHallucinated = true;
+                                break;
+                            }
+                        }
+                    }
 
-        // Buat peta: heading_marker (lowercase) => index section
-        $markerMap = [];
-        foreach ($aiSections as $idx => $sec) {
-            $marker = mb_strtolower(trim($sec['heading_marker'] ?? ''));
-            if (!empty($marker)) {
-                $markerMap[$marker] = $idx;
-            }
-        }
+                    if ($isHallucinated) {
+                        unset($contentStructured[$sectionIndex]['chunks'][$chunkIndex]);
+                    }
 
-        // Inisialisasi bucket section
-        $buckets = array_fill(0, $totalSections, []);
-        $currentSectionIdx = 0;
+                } elseif ($type === 'paragraph') {
+                    $content = trim($chunk['content'] ?? '');
 
-        foreach ($chunks as $chunk) {
-            $content = mb_strtolower(trim($chunk['content'] ?? ''));
-
-            // Cek apakah chunk ini heading yang menandai awal section baru
-            if (in_array($chunk['type'], ['heading', 'subheading']) && !empty($content)) {
-                foreach ($markerMap as $marker => $secIdx) {
-                    if (str_contains($content, $marker) && $secIdx > $currentSectionIdx) {
-                        $currentSectionIdx = $secIdx;
-                        break;
+                    if (mb_strlen($content) <= 3 || preg_match('/^[\d\W]+$/u', $content)) {
+                        unset($contentStructured[$sectionIndex]['chunks'][$chunkIndex]);
+                    } else {
+                        $contentStructured[$sectionIndex]['chunks'][$chunkIndex]['content'] = $content;
                     }
                 }
             }
 
-            $buckets[$currentSectionIdx][] = $chunk;
+            // Re-index to prevent JSON dictionaries
+            $contentStructured[$sectionIndex]['chunks'] = array_values(
+                $contentStructured[$sectionIndex]['chunks'] ?? []
+            );
         }
 
-        // Bangun content_structured dari buckets
-        foreach ($aiSections as $idx => $sec) {
-            $sectionChunks = $buckets[$idx] ?? [];
-            $uniqueChunks  = $this->deduplicateChunks($sectionChunks, $seenContents);
-
-            foreach ($uniqueChunks as $uc) {
-                if (!empty($uc['content'])) {
-                    $seenContents[] = mb_strtolower(preg_replace('/\s+/', ' ', trim($uc['content'])));
-                }
-            }
-
-            if (!empty($uniqueChunks)) {
-                $contentStructured[] = [
-                    'section_id'   => 'sec-' . str_pad($idx + 1, 3, '0', STR_PAD_LEFT),
-                    'section'      => $sec['name'],
-                    'section_type' => $sec['section_type'] ?? 'concept',
-                    'chunks'       => $uniqueChunks,
-                ];
-            }
-        }
-
-        return $contentStructured;
-    }
-
-    // =========================================================================
-    // CHUNKER RAPI
-    // =========================================================================
-    private function buildCleanChunks(string $rawText, array $extractedImages, string $folderName): array
-    {
-        $rawParagraphs = preg_split('/(\r?\n){2,}/', $rawText);
-
-        $chunks      = [];
-        $cId         = 1;
-        $prevContent = '';
-        $imageIdx    = 0;
-        $imgChunkIdx = 1;
-        $tblIdx      = 1;
-        $listIdx     = 1;
-        $tableBuffer = [];
-        $inTable     = false;
-
-        // Reset flag tabel header
-        $this->lastWasTableHeader = false;
-
-        foreach ($rawParagraphs as $rawP) {
-            $cleanP = clean_pdf_text($rawP);
-
-            if (mb_strlen($cleanP) < 20) continue;
-            if ($this->isPageNumber($cleanP)) continue;
-            if ($this->isExercise($cleanP)) continue;
-
-            // Sambungkan kalimat terpotong
-            if (!empty($prevContent) && !preg_match('/[.!?;:»"\')\]]$/', $prevContent)) {
-                $cleanP = $prevContent . ' ' . $cleanP;
-                if (!empty($chunks)) {
-                    array_pop($chunks);
-                    $cId--;
-                }
-            }
-            $prevContent = $cleanP;
-
-            // =========================================================================
-            // [PERBAIKAN #2] Deteksi tabel dengan flag lastWasTableHeader
-            // Sebelumnya: baris angka pendek setelah header tabel tidak terdeteksi
-            // Sekarang:   jika baris sebelumnya adalah header tabel, baris angka ikut masuk
-            // =========================================================================
-            if ($this->looksLikeTableRow($cleanP)) {
-                $tableBuffer[] = $cleanP;
-                $inTable       = true;
-                continue;
-            } elseif ($inTable && !empty($tableBuffer)) {
-                $tableChunk = $this->buildTableChunk($tableBuffer, $tblIdx);
-                if ($tableChunk !== null) {
-                    $tableChunk['id'] = 'c' . $cId;
-                    $chunks[]         = $tableChunk;
-                    $cId++;
-                    $tblIdx++;
-                }
-                $tableBuffer              = [];
-                $inTable                  = false;
-                $this->lastWasTableHeader = false;
-            }
-
-            $chunkType = $this->detectChunkType($cleanP);
-
-            if ($chunkType === 'example') {
-                $chunks[] = [
-                    'id'       => 'c' . $cId,
-                    'type'     => 'example',
-                    'content'  => $cleanP,
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-                $cId++;
-                $this->lastWasTableHeader = false;
-
-            } elseif ($chunkType === 'callout') {
-                $chunks[] = [
-                    'id'       => 'c' . $cId,
-                    'type'     => 'callout',
-                    'content'  => $cleanP,
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-                $cId++;
-                $this->lastWasTableHeader = false;
-
-            } elseif ($chunkType === 'list') {
-                $listItems = $this->parseListItems($cleanP);
-                $lstIdx    = str_pad($listIdx, 2, '0', STR_PAD_LEFT);
-                $chunks[]  = [
-                    'id'       => 'lst-' . $lstIdx,
-                    'type'     => 'list',
-                    'intro'    => '',
-                    'items'    => $listItems,
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-                $cId++;
-                $listIdx++;
-                $this->lastWasTableHeader = false;
-
-            } elseif ($chunkType === 'subheading') {
-                $chunks[] = [
-                    'id'       => 'c' . $cId,
-                    'type'     => 'subheading',
-                    'content'  => $cleanP,
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-                $cId++;
-                $this->lastWasTableHeader = false;
-
-            } elseif ($chunkType === 'heading') {
-                $chunks[] = [
-                    'id'       => 'c' . $cId,
-                    'type'     => 'heading',
-                    'content'  => $cleanP,
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-                $cId++;
-                // Set flag: heading nilai tempat bisa diikuti baris data tabel
-                $this->lastWasTableHeader = $this->isTableHeader($cleanP);
-
-            } else {
-                $missingImage = $this->hasImageReference($cleanP);
-
-                $chunk = [
-                    'id'       => 'c' . $cId,
-                    'type'     => 'paragraph',
-                    'content'  => $this->stripTrailingPageNumber($cleanP),
-                    'keywords' => $this->extractKeywords($cleanP),
-                ];
-
-                if ($missingImage) {
-                    $chunk['missing_image'] = true;
-                }
-
-                $chunks[] = $chunk;
-                $cId++;
-                $this->lastWasTableHeader = false;
-
-                // Sisipkan chunk gambar setelah paragraf
-                if ($imageIdx < count($extractedImages)) {
-                    $img      = $extractedImages[$imageIdx];
-                    $chunks[] = [
-                        'id'                => 'img-' . str_pad($imgChunkIdx, 2, '0', STR_PAD_LEFT),
-                        'type'              => 'image',
-                        'image_placeholder' => $img['name'],
-                        'url'               => $img['filename'],
-                        'alt_text'          => $img['alt_text'], // [PERBAIKAN #1] pakai alt-text dari Vision
-                        'caption'           => '',
-                        'keywords'          => [],
-                    ];
-                    $cId++;
-                    $imgChunkIdx++;
-                    $imageIdx++;
-                }
-            }
-        }
-
-        // Flush tabel terakhir
-        if ($inTable && !empty($tableBuffer)) {
-            $tableChunk = $this->buildTableChunk($tableBuffer, $tblIdx);
-            if ($tableChunk !== null) {
-                $tableChunk['id'] = 'c' . $cId;
-                $chunks[]         = $tableChunk;
-                $cId++;
-            }
-        }
-
-        // Gambar sisa
-        while ($imageIdx < count($extractedImages)) {
-            $img      = $extractedImages[$imageIdx];
-            $chunks[] = [
-                'id'                => 'img-' . str_pad($imgChunkIdx, 2, '0', STR_PAD_LEFT),
-                'type'              => 'image',
-                'image_placeholder' => $img['name'],
-                'url'               => $img['filename'],
-                'alt_text'          => $img['alt_text'], // [PERBAIKAN #1]
-                'caption'           => '',
-                'keywords'          => [],
-            ];
-            $imgChunkIdx++;
-            $imageIdx++;
-        }
-
-        return $chunks;
-    }
-
-    // =========================================================================
-    // [BARU — PERBAIKAN #2] Cek apakah heading ini adalah header tabel nilai tempat
-    // =========================================================================
-    private function isTableHeader(string $text): bool
-    {
-        return (bool)preg_match(
-            '/\b(Puluhan|Satuan|Ratusan|Ribuan|Nilai\s+Tempat)\b/i',
-            $text
+        // Remove sections that became empty after sanitization
+        return array_values(
+            array_filter($contentStructured, fn($s) => !empty($s['chunks']))
         );
-    }
-
-    // =========================================================================
-    // [DIPERBARUI — PERBAIKAN #2] Deteksi baris tabel
-    // Tambahan: jika lastWasTableHeader = true dan baris adalah angka pendek
-    // =========================================================================
-    private function looksLikeTableRow(string $text): bool
-    {
-        $text = trim($text);
-        
-        // Tabel dengan separator |
-        if (substr_count($text, '|') >= 2) {
-            return true;
-        }
-
-        // Tabel dengan spasi ganda teratur
-        if (preg_match('/\S+\s{2,}\S+\s{2,}\S+/', $text)) {
-            return true;
-        }
-
-        // Header tabel nilai tempat murni
-        if (preg_match('/^(Puluhan|Satuan|Ratusan)(\s+(Puluhan|Satuan|Ratusan))+$/i', $text)) {
-            return true;
-        }
-
-        // [PATCH] Deteksi deret matriks angka matematika murni (Cth: "10 20 30" atau "21 22 23")
-        if (preg_match('/^(\d+[\s\.\,]+){2,}\d+$/', $text)) {
-            return true;
-        }
-
-        // [PATCH] Deteksi baris ekuivalensi matematika/nilai tempat (Cth: "2 puluhan dan 6 satuan = 26")
-        if (preg_match('/^(\d+\s+(puluhan|satuan|ratusan)[\s\+\=a-z]*)+/i', $text)) {
-            return true;
-        }
-
-        // Baris data angka setelah header tabel
-        if ($this->lastWasTableHeader && preg_match('/^[\d\s\.\,\+\-\=]+$/', trim($text))) {
-            return true;
-        }
-
-        return false;
-    }
-
-    private function buildTableChunk(array $tableBuffer, int $tblIdx): ?array
-    {
-        if (empty($tableBuffer)) return null;
-
-        $headers  = [];
-        $rows     = [];
-        $firstRow = $tableBuffer[0];
-
-        if (str_contains($firstRow, '|')) {
-            $headers = array_map('trim', explode('|', trim($firstRow, '|')));
-            $headers = array_values(array_filter($headers, fn($h) => $h !== ''));
-
-            foreach (array_slice($tableBuffer, 1) as $row) {
-                if (str_contains($row, '---')) continue;
-                $cells = array_map('trim', explode('|', trim($row, '|')));
-                $cells = array_values(array_filter($cells, fn($c) => $c !== ''));
-                if (!empty($cells)) $rows[] = $cells;
-            }
-        } else {
-            $headers = preg_split('/\s{2,}/', $firstRow);
-            $headers = array_values(array_filter(array_map('trim', $headers)));
-
-            foreach (array_slice($tableBuffer, 1) as $row) {
-                $cells = preg_split('/\s{2,}/', $row);
-                $cells = array_values(array_filter(array_map('trim', $cells)));
-                if (!empty($cells)) $rows[] = $cells;
-            }
-        }
-
-        if (empty($rows)) return null;
-
-        return [
-            'type'    => 'table',
-            'caption' => '',
-            'headers' => $headers,
-            'rows'    => $rows,
-        ];
-    }
-
-    private function deduplicateChunks(array $chunks, array $alreadySeen = []): array
-    {
-        $seen   = $alreadySeen;
-        $result = [];
-
-        foreach ($chunks as $chunk) {
-            $content = $chunk['content'] ?? ($chunk['alt_text'] ?? '');
-
-            if (empty($content)) {
-                $result[] = $chunk;
-                continue;
-            }
-
-            $normalized = mb_strtolower(preg_replace('/\s+/', ' ', trim($content)));
-
-            if (in_array($normalized, $seen)) {
-                continue;
-            }
-
-            $seen[]   = $normalized;
-            $result[] = $chunk;
-        }
-
-        return $result;
-    }
-
-    private function isPageNumber(string $text): bool
-    {
-        $text = trim($text);
-        foreach ($this->pageNumberPatterns as $pattern) {
-            if (preg_match($pattern, $text)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    private function isExercise(string $text): bool
-    {
-        foreach ($this->exerciseKeywords as $kw) {
-            if (str_contains($text, $kw)) {
-                return true;
-            }
-        }
-        if (preg_match('/^\d+[\.)\]]\s+.{5,}\.{3,}/', $text)) {
-            return true;
-        }
-        return false;
-    }
-
-    private function hasImageReference(string $text): bool
-        {
-            $textLower = strtolower($text);
-            return str_contains($textLower, 'gambar berikut')
-                || str_contains($textLower, 'lihat ilustrasi')
-                || str_contains($textLower, 'perhatikan gambar')
-                || str_contains($textLower, 'seperti pada gambar');
-        }
-
-    private function stripTrailingPageNumber(string $text): string
-    {
-        return trim(preg_replace('/\s+\d{1,3}$/', '', $text));
-    }
-
-    private function detectChunkType(string $text): string
-    {
-        if (preg_match('/^(Glosarium|Daftar Istilah|Ringkasan|Catatan|Tentang|Profil|Kesimpulan)/i', $text)) {
-            return 'subheading';
-        }
-
-        if (preg_match('/^(Ingat[!:]?|Perlu diketahui|Rumus|Definisi|Catatan[!:]?|Tahukah kamu)/i', $text)) {
-            return 'callout';
-        }
-
-        if (preg_match('/^(Contoh|Misalnya|Perhatikan contoh)[:\s]/i', $text)) {
-            return 'example';
-        }
-
-        if (preg_match('/^[\-\*•]\s+.+/m', $text) || preg_match('/^\d+\.\s+.{10,}/m', $text)) {
-            return 'list';
-        }
-
-        $isShort     = mb_strlen($text) <= 80;
-        $noEndPunct  = !preg_match('/[.!?,;:]$/', $text);
-        $startsUpper = preg_match('/^\p{Lu}/u', $text);
-        $allCaps     = preg_match('/^[A-Z0-9\s\(\)\.]+$/', $text);
-
-        if ($isShort && $noEndPunct && $startsUpper && ($allCaps || mb_strlen($text) <= 50)) {
-            return 'heading';
-        }
-
-        return 'paragraph';
-    }
-
-    private function parseListItems(string $text): array
-    {
-        $lines = preg_split('/\r?\n/', $text);
-        $items = [];
-        foreach ($lines as $line) {
-            $line = preg_replace('/^[\-\*•\d\.]+\s*/', '', trim($line));
-            if (!empty($line)) {
-                $items[] = $line;
-            }
-        }
-        return $items;
-    }
-
-    private function extractKeywords(string $text): array
-    {
-        $stopWords = [
-            'yang', 'dengan', 'untuk', 'pada', 'dari', 'dalam', 'adalah',
-            'akan', 'itu', 'ini', 'dan', 'atau', 'juga', 'sudah', 'saja',
-            'bisa', 'lebih', 'tidak', 'karena', 'tetapi', 'namun', 'bahwa',
-            'kepada', 'oleh', 'ketika', 'saat', 'setelah', 'sebelum',
-        ];
-
-        preg_match_all('/\b[A-Za-z\x{00C0}-\x{024F}]{4,}\b/u', $text, $matches);
-        $words    = array_unique(array_map('mb_strtolower', $matches[0]));
-        $filtered = array_filter($words, fn($w) => !in_array(mb_strtolower($w), $stopWords));
-
-        return array_values(array_slice($filtered, 0, 5));
     }
 
     public function download($path)
@@ -947,7 +608,7 @@ PROMPT;
 }
 
 // =========================================================================
-// HELPER GLOBAL — Pembersihan Teks PDF
+// HELPER GLOBAL -- Pembersihan Teks PDF
 // =========================================================================
 if (!function_exists('clean_pdf_text')) {
     function clean_pdf_text(string $text): string
