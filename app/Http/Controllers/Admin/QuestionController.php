@@ -108,9 +108,11 @@ class QuestionController extends Controller
         return $this->storeMultimediaQuestion($request);
     }
 
-    // =========================================================================
-    // DESTROY
-    // =========================================================================
+    public function destroy(Question $question)
+    {
+        $question->delete();
+        return back()->with('success', 'Soal berhasil dihapus.');
+    }
 
     public function update(Request $request, Question $question)
     {

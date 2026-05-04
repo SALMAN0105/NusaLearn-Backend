@@ -77,8 +77,7 @@ class Question extends Model
 
     public function isLegacyFormat(): bool
     {
-        return $this->template_type === self::TEMPLATE_MULTIPLE_CHOICE
-            || is_null($this->template_type);
+        return is_null($this->template_type);
     }
 
     public function getTemplateLabelAttribute(): string

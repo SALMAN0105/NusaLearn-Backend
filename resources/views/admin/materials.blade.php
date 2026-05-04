@@ -291,12 +291,18 @@
                                     </td>
                                     
                                     <td class="px-6 py-4 text-right">
-                                        <form action="{{ route('materials.destroy', $item->id ?? 0) }}" method="POST" class="inline-block" onsubmit="return confirm('Peringatan: Penghapusan akan menghancurkan data relasional kuis. Lanjutkan?');">
-                                            @csrf @method('DELETE')
-                                            <button type="submit" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none" title="Drop Material">
-                                                <i class="fa-solid fa-trash-can text-sm"></i>
+                                        <div class="flex items-center justify-end gap-2">
+                                            <button onclick="editMaterial({{ json_encode($item) }})" class="w-8 h-8 rounded-lg flex items-center justify-center bg-neo-yellow border-2 border-black text-black hover:bg-yellow-400 transition-all shadow-neo-sm" title="Edit Materi">
+                                                <i class="fa-solid fa-pen-to-square text-sm"></i>
                                             </button>
-                                        </form>
+                                            
+                                            <form id="delete-form-{{ $item->id }}" action="{{ route('materials.destroy', $item->id ?? 0) }}" method="POST" class="inline">
+                                                @csrf @method('DELETE')
+                                                <button type="button" onclick="confirmDelete('{{ $item->id }}')" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm" title="Drop Material">
+                                                    <i class="fa-solid fa-trash-can text-sm"></i>
+                                                </button>
+                                            </form>
+                                        </div>
                                     </td>
                                 </tr>
                                 @empty
@@ -317,40 +323,41 @@
         </div>
     </div>
 
-    <div id="modal-add" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
-        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-add')"></div>
+    <div id="modal-edit" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-edit')"></div>
         
-        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-3xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 overflow-y-auto max-h-[90vh] transform transition-all scale-95 opacity-0" id="modal-content">
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-3xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 overflow-y-auto max-h-[90vh] transform transition-all scale-95 opacity-0" id="edit-modal-content">
             
-            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-p flex justify-between items-center sticky top-0 z-10">
+            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-yellow flex justify-between items-center sticky top-0 z-10">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
-                        <i class="fa-solid fa-cube text-p text-sm"></i>
+                        <i class="fa-solid fa-pen-to-square text-black text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="text-xl font-black text-white tracking-tight leading-none">Inject Materi Baru</h3>
-                        <p class="text-[11px] font-semibold text-white/70 mt-1">Isi parameter komputasi dan *upload payload* (JSON).</p>
+                        <h3 class="text-xl font-black text-black tracking-tight leading-none">Edit Materi</h3>
+                        <p class="text-[11px] font-semibold text-black/70 mt-1">Perbarui parameter materi atau ganti *payload*.</p>
                     </div>
                 </div>
-                <button onclick="toggleModal('modal-add')" aria-label="Close Modal" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                <button onclick="toggleModal('modal-edit')" aria-label="Close Modal" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
                     <i class="fa-solid fa-xmark text-sm"></i>
                 </button>
             </div>
 
             <div class="px-8 py-8 bg-white dark:bg-[#2d2460]">
-                <form action="{{ route('materials.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                <form id="edit-material-form" action="" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
+                    @method('PUT')
                     
                     <div>
                         <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Identifier (Judul Materi)</label>
-                        <input name="title_indo" type="text" placeholder="Contoh: Logika Algoritma Dasar" required
+                        <input id="edit_title_indo" name="title_indo" type="text" placeholder="Contoh: Logika Algoritma Dasar" required
                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kategori Engine</label>
-                            <select name="category" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_category" name="category" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="literasi">Literasi</option>
                                 <option value="numerasi">Numerasi</option>
                                 <option value="budaya">Budaya</option>
@@ -358,7 +365,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Level Skalabilitas</label>
-                            <select name="level_difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_level_difficulty" name="level_difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="1">Lvl. 1 (Dasar)</option>
                                 <option value="2">Lvl. 2 (Menengah)</option>
                                 <option value="3">Lvl. 3 (Kompleks)</option>
@@ -366,7 +373,7 @@
                         </div>
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Target Lingual</label>
-                            <select name="language_code" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_language_code" name="language_code" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="global">Global (Unbound)</option>
                                 @foreach($languages ?? [] as $lang) 
                                     <option value="{{ $lang->code }}">{{ $lang->name }}</option> 
@@ -376,32 +383,64 @@
                     </div>
 
                     <div class="pt-2">
-                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Upload Data Payload (.json)</label>
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Update Payload (.json) - <span class="text-p lowercase font-bold">Opsional</span></label>
                         <div class="border-2 border-dashed border-black dark:border-p-dark bg-neo-cyan/20 dark:bg-p-dark/20 rounded-xl p-8 text-center hover:bg-neo-cyan/40 dark:hover:bg-p-dark/40 transition-colors relative group">
                             <div class="flex flex-col items-center pointer-events-none">
                                 <div class="w-14 h-14 bg-white border-2 border-black text-black rounded-full flex items-center justify-center mb-3 group-hover:-translate-y-1 transition-transform shadow-neo-sm">
                                     <i class="fa-solid fa-code text-xl"></i>
                                 </div>
-                                <span class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Pilih File JSON</span>
-                                <span class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Max Size: 2048 KB</span>
+                                <span class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Ganti File JSON</span>
+                                <span class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Biarkan kosong jika tidak ingin mengubah konten</span>
                             </div>
-                            <input type="file" name="json_file" accept=".json" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" required>
+                            <input type="file" name="json_file" accept=".json" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer">
                         </div>
-                        <p class="text-[11px] font-bold text-gray-500 dark:text-purple-300/50 mt-2 flex items-center gap-1.5"><i class="fa-solid fa-robot text-p-mid"></i> File divalidasi dan di-parsing oleh Engine secara otomatis.</p>
                     </div>
 
                     <div class="pt-2">
                         <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Aset Visual (Thumbnail)</label>
+                        <div id="edit-image-preview-container" class="mb-4 hidden">
+                            <img id="edit-image-preview" src="" class="w-32 h-32 object-cover rounded-xl border-2 border-black shadow-neo-sm">
+                        </div>
                         <input type="file" name="image" accept="image/*" 
                                class="block w-full text-xs font-bold text-gray-500 dark:text-purple-300/70 
                                file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-2 file:border-black file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-white file:text-black hover:file:bg-gray-100 file:transition-all file:cursor-pointer cursor-pointer border-2 border-black dark:border-p-dark rounded-xl bg-p-xlt dark:bg-[#1e1b4b] outline-none">
                     </div>
 
                     <div class="flex justify-end gap-3 pt-6 border-t-2 border-p-lt dark:border-p-dark mt-6">
-                        <button type="button" onclick="toggleModal('modal-add')" class="px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-black dark:text-white text-sm font-black shadow-neo-sm hover:-translate-y-0.5 hover:shadow-neo transition-all">Abort</button>
-                        <button type="submit" class="px-5 py-2.5 bg-p border-2 border-black text-white rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-p-dark transition-all">Compile & Upload <i class="fa-solid fa-upload ml-1"></i></button>
+                        <button type="button" onclick="toggleModal('modal-edit')" class="px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-black dark:text-white text-sm font-black shadow-neo-sm hover:-translate-y-0.5 hover:shadow-neo transition-all">Batal</button>
+                        <button type="submit" class="px-5 py-2.5 bg-neo-yellow border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-yellow-400 transition-all">Simpan Perubahan <i class="fa-solid fa-save ml-1"></i></button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-delete" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[110]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-delete')"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-[120] transform transition-all scale-95 opacity-0">
+            <div class="flex-shrink-0 pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-red rounded-t-3xl flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-trash-can text-black text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-black tracking-tight leading-none">Hapus Materi?</h3>
+                    </div>
+                </div>
+                <button onclick="toggleModal('modal-delete')" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Peringatan: Penghapusan akan menghancurkan data relasional kuis. Apakah Anda yakin ingin melanjutkan?</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="toggleModal('modal-delete')" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark text-black dark:text-white rounded-xl text-sm font-black shadow-neo-sm hover:translate-y-px transition-all">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="w-full sm:w-auto px-6 py-2.5 bg-neo-red border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 transition-all">
+                        Ya, Hapus Sekarang
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -474,6 +513,41 @@
             } else {
                 localStorage.theme = 'light';
                 themeToggleIcon.classList.replace('fa-sun', 'fa-moon');
+            }
+        });
+
+        // ── Material Management Logic ──────────────────────────────────────────
+        function editMaterial(material) {
+            const form = document.getElementById('edit-material-form');
+            form.action = `/admin/materials/${material.id}`;
+            
+            document.getElementById('edit_title_indo').value = material.title_indo;
+            document.getElementById('edit_category').value = material.category;
+            document.getElementById('edit_level_difficulty').value = material.level_difficulty;
+            document.getElementById('edit_language_code').value = material.language_code;
+            
+            const previewContainer = document.getElementById('edit-image-preview-container');
+            const previewImg = document.getElementById('edit-image-preview');
+            
+            if (material.image_url) {
+                previewImg.src = `/storage/${material.image_url}`;
+                previewContainer.classList.remove('hidden');
+            } else {
+                previewContainer.classList.add('hidden');
+            }
+            
+            toggleModal('modal-edit');
+        }
+
+        let deleteId = null;
+        function confirmDelete(id) {
+            deleteId = id;
+            toggleModal('modal-delete');
+        }
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (deleteId) {
+                document.getElementById('delete-form-' + deleteId).submit();
             }
         });
     </script>

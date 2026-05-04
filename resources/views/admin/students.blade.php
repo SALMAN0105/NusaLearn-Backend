@@ -315,6 +315,64 @@
         </div><!-- /modal-content -->
     </div><!-- /modal-wrapper -->
 
+    <!-- MODAL DELETE (Custom Theme) -->
+    <div id="modal-delete" class="fixed inset-0 z-[1100] flex items-center justify-center p-4 pointer-events-none opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" onclick="toggleDeleteModal()"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-full max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-10 transform scale-95 transition-transform duration-300">
+            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-red rounded-t-3xl flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-user-minus text-black text-sm"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-black tracking-tight">Hapus Siswa?</h3>
+                </div>
+                <button onclick="toggleDeleteModal()" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Peringatan: Mencabut entitas siswa akan menghapus seluruh relasi progres pembelajaran. Apakah Anda yakin ingin melanjutkan?</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="toggleDeleteModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark text-black dark:text-white rounded-xl text-sm font-black shadow-neo-sm hover:translate-y-px transition-all">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="w-full sm:w-auto px-6 py-2.5 bg-neo-red border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 transition-all">
+                        Ya, Hapus Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DELETE (Custom Theme) -->
+    <div id="modal-delete" class="fixed inset-0 z-[1100] flex items-center justify-center p-4 pointer-events-none opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer" onclick="toggleDeleteModal()"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-full max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-10 transform scale-95 transition-transform duration-300">
+            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-neo-red rounded-t-3xl flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-user-minus text-black text-sm"></i>
+                    </div>
+                    <h3 class="text-xl font-black text-black tracking-tight">Hapus Siswa?</h3>
+                </div>
+                <button onclick="toggleDeleteModal()" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-8 space-y-6">
+                <p class="text-sm font-bold text-gray-600 dark:text-gray-300">Peringatan: Mencabut entitas siswa akan menghapus seluruh relasi progres pembelajaran. Apakah Anda yakin ingin melanjutkan?</p>
+                <div class="flex flex-col sm:flex-row justify-end gap-3">
+                    <button onclick="toggleDeleteModal()" class="w-full sm:w-auto px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark text-black dark:text-white rounded-xl text-sm font-black shadow-neo-sm hover:translate-y-px transition-all">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="w-full sm:w-auto px-6 py-2.5 bg-neo-red border-2 border-black text-black rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 transition-all">
+                        Ya, Hapus Sekarang
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ═══════════════════════ MAIN LAYOUT ═══════════════════════ -->
     <div class="flex h-screen overflow-hidden p-2 md:p-4 gap-4">
 
@@ -507,10 +565,9 @@
                                             </button>
 
                                             {{-- Tombol Delete --}}
-                                            <form action="{{ route('students.destroy', $student->id ?? 0) }}" method="POST"
-                                                  onsubmit="return confirm('Peringatan: Mencabut entitas siswa akan menghapus seluruh relasi progres pembelajaran. Lanjutkan?');">
+                                            <form id="delete-form-{{ $student->id }}" action="{{ route('students.destroy', $student->id ?? 0) }}" method="POST" class="inline">
                                                 @csrf @method('DELETE')
-                                                <button type="submit"
+                                                <button type="button" onclick="confirmDelete('{{ $student->id }}')"
                                                         class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm active:translate-x-[1px] active:translate-y-[1px] active:shadow-none"
                                                         title="Hapus Siswa">
                                                     <i class="fa-solid fa-user-minus text-sm"></i>
@@ -790,6 +847,42 @@
                 }).join('');
             }
         }
+
+        /* -- Delete Confirmation -- */
+        let deleteId = null;
+        function confirmDelete(id) {
+            deleteId = id;
+            toggleDeleteModal();
+        }
+
+        function toggleDeleteModal() {
+            const modal = document.getElementById('modal-delete');
+            const content = modal.querySelector('.modal-container');
+            const isActive = modal.classList.contains('opacity-100');
+
+            if (!isActive) {
+                modal.classList.remove('pointer-events-none', 'opacity-0');
+                modal.classList.add('opacity-100');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+                document.body.style.overflow = 'hidden';
+            } else {
+                modal.classList.add('opacity-0');
+                modal.classList.remove('opacity-100');
+                content.classList.add('scale-95');
+                content.classList.remove('scale-100');
+                setTimeout(() => {
+                    modal.classList.add('pointer-events-none');
+                    document.body.style.overflow = '';
+                }, 300);
+            }
+        }
+
+        document.getElementById('confirm-delete-btn').addEventListener('click', () => {
+            if (deleteId) {
+                document.getElementById('delete-form-' + deleteId).submit();
+            }
+        });
     </script>
 </body>
 </html>

@@ -327,16 +327,14 @@
                                     </td>
                                     <td class="px-6 py-5 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            @if(!$q->isLegacyFormat())
-                                            <button onclick="previewQuestionData({{ json_encode($q->question_data) }})"
+                                            <button onclick="previewQuestionData({{ json_encode($q->question_data ?? ['info' => 'Legacy format (no question_data)']) }})"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-p-lt border-2 border-black text-p hover:bg-p hover:text-white transition-all shadow-neo-sm" title="Preview JSON">
                                                 <i class="fa-solid fa-code text-sm"></i>
                                             </button>
-                                            <button onclick="editQuestion({{ $q->id }}, '{{ $q->template_type }}', {{ json_encode($q->question_data) }}, {{ $q->material_id }}, {{ $q->difficulty_weight }})"
+                                            <button onclick="editQuestion({{ $q->id }}, '{{ $q->template_type ?? 'multiple_choice' }}', {{ json_encode($q->question_data ?? ['question_text_indo' => $q->question_text_indo, 'options' => $q->options_json]) }}, {{ $q->material_id }}, {{ $q->difficulty_weight }})"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-neo-yellow border-2 border-black text-black hover:bg-yellow-400 transition-all shadow-neo-sm" title="Edit Soal">
                                                 <i class="fa-solid fa-pen-to-square text-sm"></i>
                                             </button>
-                                            @endif
                                             <form id="delete-form-{{ $q->id }}" action="{{ route('questions.destroy', $q->id) }}" method="POST" class="inline">
                                                 @csrf @method('DELETE')
                                                 <button type="button" onclick="confirmDelete('{{ $q->id }}')" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm">
