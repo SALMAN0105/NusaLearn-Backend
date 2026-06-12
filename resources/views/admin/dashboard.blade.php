@@ -303,11 +303,11 @@
                                             <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
                                                 <td class="px-6 py-4">
                                                     <div class="flex items-center gap-3">
-                                                        <img src="https://ui-avatars.com/api/?name={{ $progress->user->nama ?? 'S' }}&background=7C3AED&color=fff&bold=true&size=32"
+                                                        <img src="https://ui-avatars.com/api/?name={{ $progress->pengguna->nama ?? 'S' }}&background=7C3AED&color=fff&bold=true&size=32"
                                                              class="w-9 h-9 rounded-full border-2 border-black shadow-neo-sm flex-shrink-0" alt="User">
                                                         <div>
-                                                            <div class="font-bold text-black dark:text-white">{{ $progress->user->nama ?? 'Siswa Anonymous' }}</div>
-                                                            <div class="text-[11px] font-semibold text-gray-400 dark:text-purple-300/60 uppercase">{{ $progress->user->asal_sekolah ?? 'Origin Unknown' }}</div>
+                                                            <div class="font-bold text-black dark:text-white">{{ $progress->pengguna->nama ?? 'Siswa Anonymous' }}</div>
+                                                            <div class="text-[11px] font-semibold text-gray-400 dark:text-purple-300/60 uppercase">{{ $progress->pengguna->asal_sekolah ?? 'Origin Unknown' }}</div>
                                                         </div>
                                                     </div>
                                                 </td>

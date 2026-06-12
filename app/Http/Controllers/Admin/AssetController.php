@@ -386,13 +386,18 @@ class AssetController extends Controller
                 ->where('aktif', true)
                 ->first();
 
-            if (!$asset) {
-                return response()->json(['status' => 'error', 'message' => 'Aset tidak ditemukan.'], 404);
-            }
-
             // Cek apakah pakai path baru (assets/) atau path lama (quiz-assets/)
             $filePath = str_starts_with($path, 'assets/') ? $path : 'quiz-assets/' . $path;
             
+            // Fallback untuk legacy assets yang tidak ada di DB (misal: kantin_sekolah.png)
+            if (!$asset && !Storage::disk('public')->exists($filePath)) {
+                if (Storage::disk('public')->exists('assets/' . $path)) {
+                    $filePath = 'assets/' . $path;
+                } else {
+                    return response()->json(['status' => 'error', 'message' => 'Aset tidak ditemukan.'], 404);
+                }
+            }
+
             if (!Storage::disk('public')->exists($filePath)) {
                 abort(404);
             }
@@ -406,9 +411,9 @@ class AssetController extends Controller
                 'Content-Length'      => $sizeKb,
                 'Cache-Control'       => 'public, max-age=31536000, immutable',
                 'ETag'                => '"' . md5($path) . '"',
-                'Last-Modified'       => $asset->dibuat_pada->toRfc7231String(),
+                'Last-Modified'       => $asset ? $asset->dibuat_pada->toRfc7231String() : now()->toRfc7231String(),
                 'Access-Control-Allow-Origin' => '*',
-                'Content-Disposition' => 'inline; filename="' . $asset->nama_asli . '"',
+                'Content-Disposition' => 'inline; filename="' . ($asset->nama_asli ?? $path) . '"',
             ]);
 
         } catch (\Exception $e) {

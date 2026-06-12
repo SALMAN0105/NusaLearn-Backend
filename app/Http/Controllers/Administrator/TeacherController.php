@@ -91,7 +91,7 @@ class TeacherController extends Controller
         ]);
 
         try {
-            Mail::to($guru->email)->send(new TeacherAccessCodeMail($teacher, $accessCode));
+            Mail::to($guru->email)->send(new TeacherAccessCodeMail($guru, $accessCode));
             return back()->with('success', 'Kode Akses untuk guru ' . $guru->nama . ' berhasil diperbarui dan dikirim ke email.');
         } catch (\Exception $e) {
             Log::error('Gagal mengirim email: ' . $e->getMessage());
