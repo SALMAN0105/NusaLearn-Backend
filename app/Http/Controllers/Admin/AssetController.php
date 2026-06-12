@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Response;
-use App\Models\AssetLibrary;
+use App\Models\PustakaAset;
 use App\Services\AssetAcquisitionService;
 use App\Services\ManifestGeneratorService;
 
@@ -29,57 +29,57 @@ class AssetController extends Controller
      */
     public function index(Request $request)
     {
-        $query = AssetLibrary::query();
+        $query = PustakaAset::query();
 
         // Filter by type — FIX: pakai mime_type karena kolom asset_type tidak ada
         if ($request->filled('type')) {
             $type = $request->type;
             if ($type === 'lottie') {
-                $query->where('mime_type', 'application/json')
-                      ->where('source_api', 'lottiefiles');
+                $query->where('tipe_mime', 'application/json')
+                      ->where('sumber_api', 'lottiefiles');
             } elseif ($type === 'icon') {
-                $query->where('source_api', 'iconify');
+                $query->where('sumber_api', 'iconify');
             } else {
                 // image, audio, video → pakai prefix mime_type
-                $query->where('mime_type', 'like', $type . '/%');
+                $query->where('tipe_mime', 'like', $type . '/%');
             }
         }
 
         // Filter by source
         if ($request->filled('source')) {
-            $query->where('source_api', $request->source);
+            $query->where('sumber_api', $request->source);
         }
 
         // Filter by status
         if ($request->filled('status')) {
-            $query->where('is_active', $request->status === 'active');
+            $query->where('aktif', $request->status === 'active');
         }
 
         // Search by tags atau original_name
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('original_name', 'like', "%{$search}%")
-                  ->orWhereJsonContains('tags', $search);
+                $q->where('nama_asli', 'like', "%{$search}%")
+                  ->orWhereJsonContains('tag', $search);
             });
         }
 
-        $assets = $query->orderBy('created_at', 'desc')->paginate(24);
+        $assets = $query->orderBy('dibuat_pada', 'desc')->paginate(5);
 
         // Statistik untuk dashboard
         // FIX: pakai mime_type untuk menghitung per tipe, bukan kolom asset_type
         // FIX: pakai size_kb bukan file_kb (sesuai kolom di model/migration)
         $stats = [
-            'total'  => AssetLibrary::count(),
-            'images' => AssetLibrary::where('mime_type', 'like', 'image/%')->count(),
-            'audio'  => AssetLibrary::where('mime_type', 'like', 'audio/%')->count(),
-            'lottie' => AssetLibrary::where('mime_type', 'application/json')
-                            ->where('source_api', 'lottiefiles')->count(),
-            'icons'  => AssetLibrary::where('source_api', 'iconify')->count(),
-            'active' => AssetLibrary::where('is_active', true)->count(),
+            'total'  => PustakaAset::count(),
+            'images' => PustakaAset::where('tipe_mime', 'like', 'image/%')->count(),
+            'audio'  => PustakaAset::where('tipe_mime', 'like', 'audio/%')->count(),
+            'lottie' => PustakaAset::where('tipe_mime', 'application/json')
+                            ->where('sumber_api', 'lottiefiles')->count(),
+            'icons'  => PustakaAset::where('sumber_api', 'iconify')->count(),
+            'active' => PustakaAset::where('aktif', true)->count(),
             // Total ukuran file dalam MB — FIX: size_kb bukan file_kb
             'total_size_mb' => round(
-                AssetLibrary::sum('size_kb') / 1024,
+                PustakaAset::sum('ukuran_kb') / 1024,
                 2
             ),
         ];
@@ -95,8 +95,8 @@ class AssetController extends Controller
     {
         $request->validate([
             'file'       => 'required|file|max:10240', // max 10MB
-            'asset_type' => 'required|in:image,audio,lottie,icon,video',
-            'tags'       => 'nullable|string',
+            'tipe_aset' => 'required|in:image,audio,lottie,icon,video',
+            'tag' => 'nullable|string',
         ]);
 
         try {
@@ -106,7 +106,7 @@ class AssetController extends Controller
             $filename  = $hash . '.' . $extension;
 
             // Cek duplikat (CAS principle)
-            $existing = AssetLibrary::where('filename', $filename)->first();
+            $existing = PustakaAset::where('nama_file', $filename)->first();
             if ($existing) {
                 return back()->with('info', "Aset sudah ada: {$filename}");
             }
@@ -117,19 +117,21 @@ class AssetController extends Controller
             // Parse tags
             $tags = [];
             if ($request->filled('tags')) {
-                $tags = array_map('trim', explode(',', $request->tags));
+                $tags = array_map('trim', explode(',', $request->tag));
                 $tags = array_filter($tags);
             }
 
             // Simpan ke database — FIX: pakai size_kb (bukan file_kb)
-            AssetLibrary::create([
-                'filename'      => $filename,
-                'original_name' => $file->getClientOriginalName(),
-                'mime_type'     => $file->getMimeType(),
-                'size_kb'       => round($file->getSize() / 1024),
-                'source_api'    => 'manual_upload',
-                'tags'          => $tags,
-                'is_active'     => true,
+            PustakaAset::create([
+                'nama_file'   => $filename,
+                'nama_asli'   => $file->getClientOriginalName(),
+                'tipe_mime'   => $file->getMimeType(),
+                'ekstensi'    => $extension,
+                'tipe_aset'   => $request->tipe_aset,
+                'ukuran_kb'   => round($file->getSize() / 1024),
+                'sumber_api'  => 'manual_upload',
+                'tag'         => json_encode($tags),
+                'aktif'       => true,
             ]);
 
             return back()->with('success', "Aset berhasil diupload: {$filename}");
@@ -200,20 +202,20 @@ class AssetController extends Controller
             'source'      => 'required|in:pixabay,pexels,freesound,freepik,iconify,lottiefiles',
             'external_id' => 'nullable|string|max:255',
             'url'         => 'required|url',
-            'asset_type'  => 'required|in:image,audio,video,icon,lottie',
-            'tags'        => 'nullable|array',
+            'tipe_aset' => 'required|in:image,audio,video,icon,lottie',
+            'tag' => 'nullable|array',
             'tags.*'      => 'string|max:50',
-            'original_name' => 'nullable|string|max:255',
+            'nama_asli' => 'nullable|string|max:255',
         ]);
 
         try {
             $asset = $this->acquisitionService->fetchAndStore(
                 url:          $request->url,
                 source:       $request->source,
-                assetType:    $request->asset_type,
+                assetType:    $request->tipe_aset,
                 tags:         $request->input('tags', []),
                 externalId:   $request->external_id,
-                originalName: $request->original_name,
+                originalName: $request->nama_asli,
             );
 
             return response()->json([
@@ -221,11 +223,11 @@ class AssetController extends Controller
                 'message' => 'Aset berhasil diunduh.',
                 'data'    => [
                     'id'         => $asset->id,
-                    'filename'   => $asset->filename,
-                    'mime_type'  => $asset->mime_type,
+                    'nama_file' => $asset->nama_file,
+                    'tipe_mime' => $asset->tipe_mime,
                     // FIX: pakai size_kb bukan file_kb
-                    'size_kb'    => $asset->size_kb,
-                    'url'        => route('assets.serve', ['hash' => $asset->filename]),
+                    'ukuran_kb' => $asset->ukuran_kb,
+                    'url'        => route('assets.serve', ['hash' => $asset->nama_file]),
                 ],
             ]);
 
@@ -276,17 +278,25 @@ class AssetController extends Controller
      * Toggle status aktif/nonaktif aset.
      * Aset nonaktif tidak akan muncul di manifest dan tidak bisa diakses Flutter.
      */
-    public function toggleActive(AssetLibrary $asset)
+    public function toggleActive(PustakaAset $asset)
     {
-        try {
-            $asset->update(['is_active' => !$asset->is_active]);
+        $user = auth()->user();
+        if ($user && $user->peran === 'guru') {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Anda tidak memiliki hak akses untuk mengubah status aset global.',
+            ], 403);
+        }
 
-            $status = $asset->is_active ? 'diaktifkan' : 'dinonaktifkan';
+        try {
+            $asset->update(['aktif' => !$asset->aktif]);
+
+            $status = $asset->aktif ? 'diaktifkan' : 'dinonaktifkan';
 
             return response()->json([
                 'status'    => 'success',
                 'message'   => "Aset berhasil {$status}.",
-                'is_active' => $asset->is_active,
+                'aktif' => $asset->aktif,
             ]);
 
         } catch (\Exception $e) {
@@ -303,14 +313,22 @@ class AssetController extends Controller
      * Hapus aset dari database DAN dari disk.
      * Cek dulu apakah aset sedang digunakan oleh soal aktif.
      */
-    public function destroy(AssetLibrary $asset)
+    public function destroy(PustakaAset $asset)
     {
+        $user = auth()->user();
+        if ($user && $user->peran === 'guru') {
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Anda tidak memiliki hak akses untuk menghapus aset global.',
+            ], 403);
+        }
+
         try {
             // Cek apakah aset sedang digunakan oleh soal aktif
-            $usedByQuestions = \App\Models\Question::where('is_active', true)
+            $usedByQuestions = \App\Models\Soal::where('aktif', true)
                 ->where(function ($q) use ($asset) {
-                    $q->whereJsonContains('assets_required', $asset->filename)
-                      ->orWhere('question_data', 'like', "%{$asset->filename}%");
+                    $q->whereJsonContains('aset_diperlukan', $asset->nama_file)
+                      ->orWhere('data_soal', 'like', "%{$asset->nama_file}%");
                 })
                 ->count();
 
@@ -323,13 +341,13 @@ class AssetController extends Controller
             }
 
             // Hapus file fisik dari disk
-            $filePath = 'quiz-assets/' . $asset->filename;
+            $filePath = 'quiz-assets/' . $asset->nama_file;
             if (Storage::disk('public')->exists($filePath)) {
                 Storage::disk('public')->delete($filePath);
             }
 
             // Hapus record dari database
-            $filename = $asset->filename;
+            $filename = $asset->nama_file;
             $asset->delete();
 
             return response()->json([
@@ -364,8 +382,8 @@ class AssetController extends Controller
     public function serveFile(string $path)
     {
         try {
-            $asset = AssetLibrary::where('filename', $path)
-                ->where('is_active', true)
+            $asset = PustakaAset::where('nama_file', $path)
+                ->where('aktif', true)
                 ->first();
 
             if (!$asset) {
@@ -380,17 +398,17 @@ class AssetController extends Controller
             }
 
             $fileContent = Storage::disk('public')->get($filePath);
-            $mimeType    = $asset->mime_type ?? $this->guessMimeType($path);
-            $sizeKb      = $asset->size_kb ?? strlen($fileContent);
+            $mimeType    = $asset->tipe_mime ?? $this->guessMimeType($path);
+            $sizeKb      = $asset->ukuran_kb ?? strlen($fileContent);
 
             return Response::make($fileContent, 200, [
                 'Content-Type'        => $mimeType,
                 'Content-Length'      => $sizeKb,
                 'Cache-Control'       => 'public, max-age=31536000, immutable',
                 'ETag'                => '"' . md5($path) . '"',
-                'Last-Modified'       => $asset->created_at->toRfc7231String(),
+                'Last-Modified'       => $asset->dibuat_pada->toRfc7231String(),
                 'Access-Control-Allow-Origin' => '*',
-                'Content-Disposition' => 'inline; filename="' . $asset->original_name . '"',
+                'Content-Disposition' => 'inline; filename="' . $asset->nama_asli . '"',
             ]);
 
         } catch (\Exception $e) {

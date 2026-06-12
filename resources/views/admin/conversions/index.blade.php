@@ -211,14 +211,14 @@
         }
         html.dark #confirm-modal .cm-title { color: #f1f5f9; }
 
-        #confirm-modal .cm-filename {
+        #confirm-modal .cm-nama_file {
             display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis;
             white-space: nowrap; background: #F5F3FF; border: 2px solid #000; border-radius: 8px;
             padding: 3px 10px; font-size: 11px; font-weight: 800; color: #7C3AED;
             font-family: 'Plus Jakarta Sans', sans-serif; position: relative; z-index: 1;
             margin-bottom: 6px;
         }
-        html.dark #confirm-modal .cm-filename { background: #1e1b4b; border-color: #4C1D95; }
+        html.dark #confirm-modal .cm-nama_file { background: #1e1b4b; border-color: #4C1D95; }
 
         #confirm-modal .cm-subtitle {
             font-size: 12px; font-weight: 700; color: #6b7280;
@@ -316,7 +316,7 @@
                 <i class="fa-solid fa-trash-can text-2xl text-red-500"></i>
             </div>
             <div class="cm-title">Hapus Log Ini?</div>
-            <div class="cm-filename" id="cm-filename">—</div>
+            <div class="cm-nama_file" id="cm-nama_file">—</div>
             <div class="cm-subtitle">Tindakan ini permanen dan tidak dapat dibatalkan.</div>
             <div class="cm-actions">
                 <button class="cm-btn-cancel" id="cm-btn-cancel">
@@ -365,7 +365,7 @@
                 </a>
 
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
-                <a href="{{ route('materials.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('materi.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-book-open w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Materi Belajar</span>
                 </a>
@@ -375,32 +375,24 @@
                     <span>Kelola File</span>
                 </a>
 
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('soal.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
 
-                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Bahasa Daerah</span>
-                </a>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Data Akademik</p>
                 <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-users w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Wilayah</span>
-                </a>
-            </nav>
+                </nav>
 
             <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar Admin" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama ?? 'Guru' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                 </div>
@@ -449,18 +441,15 @@
                             <form id="uploadForm" enctype="multipart/form-data" class="space-y-6 relative">
                                 <div>
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Algoritma Parsing <span class="text-neo-red">*</span></label>
-                                    <div id="folder-name-container" class="mt-4">
+                                    <div id="folder-nama-container" class="mt-4">
                                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Nama Folder / Materi <span class="text-neo-red">*</span></label>
                                     <input type="text" name="folder_name" id="folder_name" placeholder="Contoh: matematika-bab-1" required
                                         class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all">
                                     <p class="text-[11px] font-bold text-gray-500 mt-1">Nama ini akan digunakan sebagai nama folder gambar dan file JSON.</p>
-                                </div>
                                     <select name="type" id="file_type" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
-                                        <option value="kamus">Standar: Excel/CSV ke Array JSON</option>
                                         <option value="materi">Standar: PDF Ekstraksi Teks Dasar</option>
-                                        <option value="pdf_to_excel">AI Vision: PDF ke Relasional Dataset (Kamus)</option>
                                     </select>
-                                    <div id="page-range-inputs" class="grid grid-cols-2 gap-4 mt-4 hidden">
+                                    <div id="page-range-inputs" class="grid grid-cols-2 gap-4 mt-4">
                                         <div>
                                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Hal. Awal <span class="text-gray-400 normal-case">(opsional)</span></label>
                                             <input type="number" name="page_start" id="page_start" placeholder="Contoh: 1" min="1"
@@ -473,6 +462,7 @@
                                         </div>
                                         <p class="col-span-2 text-[11px] font-bold text-gray-500 mt-[-8px]">Gunakan ini untuk memecah PDF per Bab. Biarkan kosong untuk proses semua halaman.</p>
                                     </div>
+                                    </div>
                                 </div>
 
                                 <div class="pt-2">
@@ -480,18 +470,44 @@
                                     <div id="drop-zone" class="border-2 border-dashed border-black dark:border-p-dark bg-p-xlt dark:bg-p-dark/20 rounded-xl p-8 text-center transition-all relative group shadow-neo-sm cursor-pointer hover:bg-p-lt dark:hover:bg-p-dark/40">
                                         <div class="flex flex-col items-center pointer-events-none">
                                             <div id="icon-container" class="w-14 h-14 bg-white border-2 border-black text-black rounded-full flex items-center justify-center mb-3 transition-all shadow-neo-sm group-hover:-translate-y-1">
-                                                <i id="upload_icon" class="fa-solid fa-file-excel text-xl text-green-600"></i>
+                                                <i id="upload_icon" class="fa-solid fa-file-pdf text-xl text-red-500"></i>
                                             </div>
                                             <span id="file_name_display" class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Pilih Dokumen</span>
-                                            <span id="file_rules" class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Accept: .xls, .xlsx, .csv (Max: 512MB)</span>
+                                            <span id="file_rules" class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Accept: .pdf (Memisahkan Teks & Binary Image)</span>
                                         </div>
-                                        <input type="file" name="upload_file" id="file_input" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept=".xls,.xlsx,.csv" required>
+                                        <input type="file" name="upload_file" id="file_input" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept=".pdf" required>
                                     </div>
                                 </div>
 
+                                <div class="pt-2 mt-4">
+                                    <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Gambar Sisipan AI (Maks 5) <span class="text-gray-400 normal-case">(Opsional)</span></label>
+                                    <div class="border-2 border-dashed border-black dark:border-p-dark bg-neo-cyan/10 dark:bg-p-dark/20 rounded-xl p-6 text-center transition-all relative group shadow-neo-sm cursor-pointer hover:bg-neo-cyan/30 dark:hover:bg-p-dark/40">
+                                        <div class="flex flex-col items-center pointer-events-none">
+                                            <div class="w-12 h-12 bg-white border-2 border-black text-black rounded-full flex items-center justify-center mb-2 transition-all shadow-neo-sm group-hover:-translate-y-1">
+                                                <i class="fa-solid fa-images text-lg text-blue-500"></i>
+                                            </div>
+                                            <span id="image_name_display" class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Pilih Gambar</span>
+                                            <span class="text-[11px] font-bold text-gray-500 dark:text-purple-300/60 font-mono">Format: .jpg, .png (Pilih s/d 5 file sekaligus)</span>
+                                        </div>
+                                        <input type="file" name="teacher_images[]" id="teacher_images" class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" accept="image/*" multiple onchange="validateImages(this)">
+                                    </div>
+                                </div>
+
+                                <script>
+                                function validateImages(input) {
+                                    if (input.files.length > 5) {
+                                        Swal.fire({ icon: 'warning', title: 'Perhatian!', text: 'Anda hanya dapat mengunggah maksimal 5 gambar.' });
+                                        input.value = '';
+                                        document.getElementById('image_name_display').innerText = 'Pilih Gambar';
+                                        return;
+                                    }
+                                    document.getElementById('image_name_display').innerText = input.files.length > 0 ? input.files.length + ' Gambar Terpilih' : 'Pilih Gambar';
+                                }
+                                </script>
+
                                 <div class="pt-6 border-t-2 border-p-lt dark:border-p-dark mt-6">
                                     <button type="submit" id="submit-btn" class="w-full bg-neo-yellow hover:bg-yellow-400 text-black border-2 border-black rounded-xl shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg transition-all flex justify-center items-center gap-2 py-3.5 text-sm font-black uppercase tracking-wide">
-                                        <i class="fa-solid fa-bolt"></i> Inisiasi Konversi Deterministik
+                                        <i class="fa-solid fa-file-lines"></i> Jalankan Native PDF Parser
                                     </button>
                                 </div>
                             </form>
@@ -520,18 +536,18 @@
                                     @forelse($histories ?? [] as $history)
                                     <tr class="log-row hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group" data-id="{{ $history->id }}">
                                         <td class="px-5 py-4">
-                                            <div class="font-bold text-black dark:text-white truncate max-w-[180px] text-sm" title="{{ $history->original_filename }}">{{ $history->original_filename }}</div>
+                                            <div class="font-bold text-black dark:text-white truncate max-w-[180px] text-sm" title="{{ $history->nama_file_asli }}">{{ $history->nama_file_asli }}</div>
                                             <div class="text-[10px] font-bold text-gray-500 dark:text-purple-300/60 mt-1 uppercase tracking-wider flex items-center gap-1.5">
-                                                @if(str_contains($history->conversion_type, 'ai'))
+                                                @if(str_contains($history->tipe_konversi, 'ai'))
                                                     <span class="text-neo-cyan dark:text-cyan-400"><i class="fa-solid fa-robot"></i></span>
                                                 @else
                                                     <i class="fa-solid fa-gear text-p-mid"></i>
                                                 @endif
-                                                {{ str_replace('_', ' → ', $history->conversion_type) }}
+                                                {{ str_replace('_', ' → ', $history->tipe_konversi) }}
                                             </div>
                                         </td>
                                         <td class="px-4 py-4 text-center font-mono font-bold text-black dark:text-white text-xs bg-p-xlt dark:bg-[#1e1b4b]">
-                                            {{ number_format($history->file_size_kb / 1024, 2) }} <span class="text-[10px] text-gray-500">MB</span>
+                                            {{ number_format($history->ukuran_file_kb / 1024, 2) }} <span class="text-[10px] text-gray-500">MB</span>
                                         </td>
                                         <td class="px-4 py-4 text-center">
                                             @if($history->status == 'success')
@@ -539,14 +555,14 @@
                                                     <i class="fa-solid fa-check"></i> Valid
                                                 </span>
                                             @else
-                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-neo-red text-black border-2 border-black shadow-neo-sm" title="{{ $history->error_log }}">
+                                                <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-wider bg-neo-red text-black border-2 border-black shadow-neo-sm" title="{{ $history->log_error }}">
                                                     <i class="fa-solid fa-xmark"></i> Galat
                                                 </span>
                                             @endif
                                         </td>
                                         <td class="px-4 py-4 text-center">
-                                            @if($history->status == 'success' && $history->json_output_path && $history->json_output_path !== '-')
-                                                <a href="{{ route('converter.download', ['path' => base64_encode($history->json_output_path)]) }}"
+                                            @if($history->status == 'success' && $history->jalur_output_json && $history->jalur_output_json !== '-')
+                                                <a href="{{ route('converter.download', ['path' => base64_encode($history->jalur_output_json)]) }}"
                                                    class="btn-download-riwayat text-[10px] uppercase tracking-wider" title="Unduh JSON">
                                                     <i class="fa-solid fa-download"></i> Get
                                                 </a>
@@ -589,7 +605,7 @@
 
     <script>
         // System Preloader
-        window.addEventListener('load', () => {
+        window.addEventListener('DOMContentLoaded', () => {
             const pre = document.getElementById('preloader');
             pre.style.opacity = '0';
             setTimeout(() => { pre.style.visibility = 'hidden'; }, 500);
@@ -747,6 +763,27 @@
             setTimeout(() => toast.classList.remove('show'), 3500);
         }
 
+        const MAX_UPLOAD_BYTES = 500 * 1024 * 1024;
+
+        function formatBytes(bytes) {
+            return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+        }
+
+        function showUploadSizeError(file) {
+            const alertBox = document.getElementById('alert-container');
+            alertBox.className = "mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border-2 border-black shadow-neo-sm text-sm font-black bg-neo-red text-black uppercase tracking-wide fade-in";
+            alertBox.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-xl"></i> <div>File terlalu besar.<br><span class="text-[10px] font-bold tracking-normal normal-case text-gray-700">Ukuran file ${formatBytes(file.size)}. Batas aman upload aplikasi adalah 500 MB.</span></div>`;
+            alertBox.classList.remove('hidden');
+        }
+
+        function normalizeFetchError(rawResponse) {
+            const plain = rawResponse.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (/POST Content-Length .* exceeds the limit/i.test(plain)) {
+                return 'Ukuran upload melebihi batas post_max_size PHP. Restart service PHP dan Apache di FlyEnv setelah menaikkan post_max_size dan upload_max_filesize.';
+            }
+            return plain.slice(0, 500) || 'Server mengembalikan response non-JSON.';
+        }
+
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('border-p', 'bg-p-lt');
@@ -764,6 +801,10 @@
             const file = files[0];
             if (!isValidFileFormat(file)) {
                 showFormatError();
+                return;
+            }
+            if (file.size > MAX_UPLOAD_BYTES) {
+                showUploadSizeError(file);
                 return;
             }
             // Assign ke file input
@@ -785,6 +826,10 @@
                 showFormatError();
                 return;
             }
+            if (fileInput.files.length > 0 && fileInput.files[0].size > MAX_UPLOAD_BYTES) {
+                showUploadSizeError(fileInput.files[0]);
+                return;
+            }
 
             const form = this;
             const alertBox = document.getElementById('alert-container');
@@ -802,7 +847,14 @@
                     body: formData
                 });
 
-                const result = await response.json();
+                const rawResponse = await response.text();
+                let result = {};
+                try {
+                    result = rawResponse ? JSON.parse(rawResponse) : {};
+                } catch (parseError) {
+                    throw new Error(normalizeFetchError(rawResponse));
+                }
+
                 hideLoadingModal();
                 submitBtn.disabled = false;
 
@@ -827,7 +879,7 @@
                 hideLoadingModal();
                 submitBtn.disabled = false;
                 alertBox.className = "mb-6 flex items-center gap-3 px-5 py-3 rounded-xl border-2 border-black shadow-neo-sm text-sm font-black bg-neo-red text-black uppercase tracking-wide fade-in";
-                alertBox.innerHTML = `<i class="fa-solid fa-server text-xl"></i> <div>Koneksi Timeout / Terputus.<br><span class="text-[10px] font-bold tracking-normal capitalize text-gray-700">Verifikasi 'max_execution_time' server Anda.</span></div>`;
+                alertBox.innerHTML = `<i class="fa-solid fa-server text-xl"></i> <div>Request gagal diproses.<br><span class="text-[10px] font-bold tracking-normal normal-case text-gray-700">${error.message || 'Koneksi timeout / terputus. Periksa log server dan batas waktu Apache/PHP.'}</span></div>`;
                 alertBox.classList.remove('hidden');
             }
         });
@@ -896,7 +948,7 @@
 
         // Init pagination on load
         document.addEventListener('DOMContentLoaded', () => { renderPagination(); });
-        window.addEventListener('load', () => { renderPagination(); });
+        window.addEventListener('DOMContentLoaded', () => { renderPagination(); });
 
         // ========================
         // HAPUS LOG (AJAX DELETE) — Custom Modal
@@ -906,7 +958,7 @@
         let _hapusPendingFilename = '';
 
         const confirmModal   = document.getElementById('confirm-modal');
-        const cmFilename     = document.getElementById('cm-filename');
+        const cmFilename     = document.getElementById('cm-nama_file');
         const cmBtnCancel    = document.getElementById('cm-btn-cancel');
         const cmBtnDelete    = document.getElementById('cm-btn-delete');
         const notifToast     = document.getElementById('notif-toast');
@@ -923,11 +975,11 @@
             notifToast._timer = setTimeout(() => { notifToast.classList.remove('show'); }, 3500);
         }
 
-        function openConfirmModal(id, btn, filename) {
+        function openConfirmModal(id, btn, nama_file) {
             _hapusPendingId  = id;
             _hapusPendingBtn = btn;
-            _hapusPendingFilename = filename;
-            cmFilename.textContent = filename || `Log #${id}`;
+            _hapusPendingFilename = nama_file;
+            cmFilename.textContent = nama_file || `Log #${id}`;
             cmBtnDelete.disabled = false;
             cmBtnDelete.innerHTML = '<i class="fa-solid fa-trash-can"></i> Ya, Hapus';
             confirmModal.classList.add('active');
@@ -993,8 +1045,8 @@
 
         function hapusLog(id, btn) {
             const row = btn.closest('tr.log-row');
-            const filename = row ? row.querySelector('.font-bold.text-black')?.textContent?.trim() : `Log #${id}`;
-            openConfirmModal(id, btn, filename);
+            const nama_file = row ? row.querySelector('.font-bold.text-black')?.textContent?.trim() : `Log #${id}`;
+            openConfirmModal(id, btn, nama_file);
         }
 
         // Dark Mode Logic
@@ -1034,5 +1086,30 @@
             }
         }
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>

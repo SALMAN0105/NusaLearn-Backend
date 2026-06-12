@@ -4,9 +4,9 @@
 
 namespace App\Services;
 
-use App\Models\Question;
-use App\Models\Material;
-use App\Models\AssetLibrary;
+use App\Models\Soal;
+use App\Models\Materi;
+use App\Models\PustakaAset;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -17,11 +17,11 @@ class QuizGeneratorService
     // Mapping template → tipe aset yang dibutuhkan
     // Dipakai untuk menentukan sumber API mana yang dicari
     const TEMPLATE_ASSET_NEEDS = [
-        Question::TEMPLATE_MULTIPLE_CHOICE => ['image'],          // gambar untuk pilihan / soal
-        Question::TEMPLATE_DRAG_AND_DROP   => ['image'],          // gambar untuk item drag
-        Question::TEMPLATE_MATCHING_GAME   => ['image'],          // gambar untuk pasangan
-        Question::TEMPLATE_FILL_BLANK      => ['audio'],          // audio opsional
-        Question::TEMPLATE_IMAGE_QUIZ      => ['image', 'audio'], // gambar utama + audio
+        Soal::TEMPLATE_MULTIPLE_CHOICE => ['image'],          // gambar untuk pilihan / soal
+        Soal::TEMPLATE_DRAG_AND_DROP   => ['image'],          // gambar untuk item drag
+        Soal::TEMPLATE_MATCHING_GAME   => ['image'],          // gambar untuk pasangan
+        Soal::TEMPLATE_FILL_BLANK      => ['audio'],          // audio opsional
+        Soal::TEMPLATE_IMAGE_QUIZ      => ['image', 'audio'], // gambar utama + audio
     ];
 
     // Sumber API per tipe aset (urutan prioritas)
@@ -42,11 +42,11 @@ class QuizGeneratorService
 
     public function generate(int $materialId, string $templateType, int $difficulty = 3): array
     {
-        if (!array_key_exists($templateType, Question::ALL_TEMPLATES)) {
+        if (!array_key_exists($templateType, Soal::ALL_TEMPLATES)) {
             return $this->fail("Template '{$templateType}' tidak dikenali.");
         }
 
-        $material = Material::find($materialId);
+        $material = Materi::find($materialId);
         if (!$material) {
             return $this->fail("Material ID {$materialId} tidak ditemukan.");
         }
@@ -58,7 +58,7 @@ class QuizGeneratorService
 
         Log::info("[QuizGenerator] Memanggil AI", [
             'template'    => $templateType,
-            'material_id' => $materialId,
+            'materi_id' => $materialId,
             'difficulty'  => $difficulty,
         ]);
 
@@ -73,15 +73,15 @@ class QuizGeneratorService
             return $this->fail($parsed['error'], $rawJson);
         }
 
-        $questionData   = $parsed['question_data'];
-        $assetsRequired = $parsed['assets_required'];
+        $questionData   = $parsed['data_soal'];
+        $assetsRequired = $parsed['aset_diperlukan'];
         $assetKeywords  = $parsed['asset_keywords'];
 
         // ── STEP 2: Auto-fetch aset yang belum ada ────────────────────
         $fetchResults = $this->autoFetchMissingAssets(
             $assetKeywords,
             $templateType,
-            $material->title_indo ?? ''
+            $material->judul_indo ?? ''
         );
 
         // ── STEP 3: Ganti placeholder filename dengan file nyata ──────
@@ -105,7 +105,7 @@ class QuizGeneratorService
 
         Log::info("[QuizGenerator] Selesai", [
             'template'      => $templateType,
-            'material_id'   => $materialId,
+            'materi_id' => $materialId,
             'assets_fetched'=> count($fetchResults['fetched']),
             'assets_failed' => count($fetchResults['failed']),
             'missing_count' => count($missingAssets),
@@ -113,8 +113,8 @@ class QuizGeneratorService
 
         return [
             'success'          => true,
-            'question_data'    => $questionData,
-            'assets_required'  => $assetsRequired,
+            'data_soal' => $questionData,
+            'aset_diperlukan' => $assetsRequired,
             'missing_assets'   => $missingAssets,
             'raw_json'         => $rawJson,
             'auto_fetch_log'   => [
@@ -175,8 +175,8 @@ class QuizGeneratorService
             // Cek apakah sudah ada di library (cari berdasarkan tag)
             $existing = $this->findExistingAssetByKeywords($keywords, $type);
             if ($existing) {
-                $resolved[$slot] = $existing->filename;
-                Log::info("[QuizGenerator] Aset ditemukan di library: {$existing->filename}", compact('slot', 'keywords'));
+                $resolved[$slot] = $existing->nama_file;
+                Log::info("[QuizGenerator] Aset ditemukan di library: {$existing->nama_file}", compact('slot', 'keywords'));
                 continue;
             }
 
@@ -184,11 +184,11 @@ class QuizGeneratorService
             $asset = $this->fetchAssetFromExternalApi($keywords, $type, $slot, $materialTitle);
 
             if ($asset) {
-                $resolved[$slot] = $asset->filename;
+                $resolved[$slot] = $asset->nama_file;
                 $fetched[] = [
                     'slot'     => $slot,
-                    'filename' => $asset->filename,
-                    'source'   => $asset->source_api,
+                    'nama_file' => $asset->nama_file,
+                    'source'   => $asset->sumber_api,
                     'type'     => $type,
                     'keywords' => $keywords,
                 ];
@@ -208,17 +208,17 @@ class QuizGeneratorService
     /**
      * Cari aset yang sudah ada di library berdasarkan tag/keyword.
      */
-    private function findExistingAssetByKeywords(array $keywords, string $type): ?AssetLibrary
+    private function findExistingAssetByKeywords(array $keywords, string $type): ?PustakaAset
     {
         if (empty($keywords)) return null;
 
-        $query = AssetLibrary::where('is_active', true);
+        $query = PustakaAset::where('aktif', true);
 
         // Filter tipe MIME
         if ($type === 'image') {
-            $query->where('mime_type', 'like', 'image/%');
+            $query->where('tipe_mime', 'like', 'image/%');
         } elseif ($type === 'audio') {
-            $query->where('mime_type', 'like', 'audio/%');
+            $query->where('tipe_mime', 'like', 'audio/%');
         }
 
         // Cari berdasarkan tag (minimal 1 keyword match)
@@ -226,8 +226,8 @@ class QuizGeneratorService
             foreach ($keywords as $kw) {
                 $kw = strtolower(trim($kw));
                 if ($kw) {
-                    $q->orWhereJsonContains('tags', $kw)
-                      ->orWhere('original_name', 'like', "%{$kw}%");
+                    $q->orWhereJsonContains('tag', $kw)
+                      ->orWhere('nama_asli', 'like', "%{$kw}%");
                 }
             }
         });
@@ -244,7 +244,7 @@ class QuizGeneratorService
         string $type,
         string $slot,
         string $materialTitle
-    ): ?AssetLibrary {
+    ): ?PustakaAset {
         $sources = self::ASSET_SOURCES[$type] ?? [];
         $query   = implode(' ', array_slice($keywords, 0, 3));
 
@@ -293,10 +293,10 @@ class QuizGeneratorService
                     assetType:    $type,
                     tags:         $tags,
                     externalId:   $best['external_id'] ?? null,
-                    originalName: $best['original_name'] ?? null,
+                    originalName: $best['nama_asli'] ?? null,
                 );
 
-                Log::info("[QuizGenerator] Aset berhasil di-fetch dari {$source}: {$asset->filename}");
+                Log::info("[QuizGenerator] Aset berhasil di-fetch dari {$source}: {$asset->nama_file}");
                 return $asset;
 
             } catch (\Exception $e) {
@@ -367,24 +367,24 @@ class QuizGeneratorService
             }
 
     private function buildUserPrompt(
-        Material $material,
+        Materi $material,
         string   $templateType,
         int      $difficulty,
         string   $manifestText
     ): string {
         $summary = '';
 
-        if ($material->ai_embeddings) {
-            $embeddings = is_array($material->ai_embeddings)
-                ? $material->ai_embeddings
-                : json_decode($material->ai_embeddings, true);
+        if ($material->embedding_ai) {
+            $embeddings = is_array($material->embedding_ai)
+                ? $material->embedding_ai
+                : json_decode($material->embedding_ai, true);
             $summary = $embeddings['knowledge_base']['summary'] ?? '';
         }
 
-        if (empty($summary) && $material->content_indo) {
-            $content = is_array($material->content_indo)
-                ? $material->content_indo
-                : json_decode($material->content_indo, true);
+        if (empty($summary) && $material->konten) {
+            $content = is_array($material->konten)
+                ? $material->konten
+                : json_decode($material->konten, true);
             $km      = $content['knowledge_map'] ?? [];
             $summary = $km['context_summary'] ?? '';
         }
@@ -400,8 +400,8 @@ class QuizGeneratorService
 
         return <<<PROMPT
 === INFORMASI MATERI ===
-Judul: {$material->title_indo}
-Kategori: {$material->category}
+Judul: {$material->judul_indo}
+Kategori: {$material->kategori}
 Tingkat Kesulitan Target: Level {$difficulty} ({$difficultyLabel})
 
 Ringkasan Konten:
@@ -440,7 +440,7 @@ PROMPT;
         JSON;
 
                 return match($templateType) {
-                    Question::TEMPLATE_MULTIPLE_CHOICE => <<<JSON
+                    Soal::TEMPLATE_MULTIPLE_CHOICE => <<<JSON
         {
         "question_text_indo": "string — teks pertanyaan",
         "template_type": "multiple_choice",
@@ -460,7 +460,7 @@ PROMPT;
         CATATAN: Isi image_asset pada setiap opsi dengan "__SLOT_option_X_image__" jika gambar relevan untuk opsi tersebut, atau null jika tidak perlu. Isi asset_keywords sesuai opsi yang pakai gambar.
         JSON,
 
-        Question::TEMPLATE_DRAG_AND_DROP => <<<JSON
+        Soal::TEMPLATE_DRAG_AND_DROP => <<<JSON
         {
         "question_text_indo": "string — instruksi",
         "template_type": "drag_and_drop",
@@ -480,7 +480,7 @@ PROMPT;
         }
         JSON,
 
-                    Question::TEMPLATE_MATCHING_GAME => <<<JSON
+                    Soal::TEMPLATE_MATCHING_GAME => <<<JSON
         {
         "question_text_indo": "string — instruksi pasangkan",
         "template_type": "matching_game",
@@ -498,7 +498,7 @@ PROMPT;
         }
         JSON,
 
-                    Question::TEMPLATE_FILL_BLANK => <<<JSON
+                    Soal::TEMPLATE_FILL_BLANK => <<<JSON
         {
         "question_text_indo": "string — kalimat dengan ___ sebagai penanda blank",
         "template_type": "fill_blank",
@@ -516,7 +516,7 @@ PROMPT;
         CATATAN: Untuk fill_blank, sertakan audio_question jika relevan (misal: siswa mendengar audio lalu mengisi blank). Isi asset_keywords dengan keyword audio jika audio_question dipakai.
         JSON,
 
-        Question::TEMPLATE_IMAGE_QUIZ => <<<JSON
+        Soal::TEMPLATE_IMAGE_QUIZ => <<<JSON
         {
         "question_text_indo": "string — pertanyaan tentang gambar",
         "template_type": "image_quiz",
@@ -623,7 +623,7 @@ PROMPT;
             ];
         }
 
-        if (empty($decoded['question_text_indo'])) {
+        if (empty($decoded['teks_soal'])) {
             return [
                 'valid'          => false,
                 'error'          => 'Field "question_text_indo" kosong.',
@@ -631,12 +631,12 @@ PROMPT;
             ];
         }
 
-        if (!isset($decoded['template_type'])) {
-            $decoded['template_type'] = $templateType;
+        if (!isset($decoded['tipe_template'])) {
+            $decoded['tipe_template'] = $templateType;
         }
 
-        if (!isset($decoded['assets_required']) || !is_array($decoded['assets_required'])) {
-            $decoded['assets_required'] = [];
+        if (!isset($decoded['aset_diperlukan']) || !is_array($decoded['aset_diperlukan'])) {
+            $decoded['aset_diperlukan'] = [];
         }
 
         // Ambil & validasi asset_keywords dari AI
@@ -669,8 +669,8 @@ PROMPT;
 
         return [
             'valid'           => true,
-            'question_data'   => $decoded,
-            'assets_required' => $decoded['assets_required'],
+            'data_soal' => $decoded,
+            'aset_diperlukan' => $decoded['aset_diperlukan'],
             'asset_keywords'  => $assetKeywords,
             'error'           => null,
         ];
@@ -679,19 +679,19 @@ PROMPT;
     private function validateTemplateStructure(array $data, string $templateType): array
     {
         switch ($templateType) {
-            case Question::TEMPLATE_MULTIPLE_CHOICE:
+            case Soal::TEMPLATE_MULTIPLE_CHOICE:
                 if (empty($data['options']) || !is_array($data['options'])) {
                     return ['valid' => false, 'error' => 'MC: field "options" kosong atau bukan array.'];
                 }
                 if (count($data['options']) < 2) {
                     return ['valid' => false, 'error' => 'MC: minimal 2 pilihan jawaban.'];
                 }
-                if (empty($data['correct_answer_key'])) {
+                if (empty($data['kunci_jawaban'])) {
                     return ['valid' => false, 'error' => 'MC: field "correct_answer_key" kosong.'];
                 }
                 break;
 
-            case Question::TEMPLATE_DRAG_AND_DROP:
+            case Soal::TEMPLATE_DRAG_AND_DROP:
                 if (empty($data['items']) || !is_array($data['items'])) {
                     return ['valid' => false, 'error' => 'DnD: field "items" kosong atau bukan array.'];
                 }
@@ -703,7 +703,7 @@ PROMPT;
                 }
                 break;
 
-            case Question::TEMPLATE_MATCHING_GAME:
+            case Soal::TEMPLATE_MATCHING_GAME:
                 if (empty($data['pairs']) || !is_array($data['pairs'])) {
                     return ['valid' => false, 'error' => 'Matching: field "pairs" kosong atau bukan array.'];
                 }
@@ -712,7 +712,7 @@ PROMPT;
                 }
                 break;
 
-            case Question::TEMPLATE_FILL_BLANK:
+            case Soal::TEMPLATE_FILL_BLANK:
                 if (empty($data['blanks']) || !is_array($data['blanks'])) {
                     return ['valid' => false, 'error' => 'FillBlank: field "blanks" kosong atau bukan array.'];
                 }
@@ -723,7 +723,7 @@ PROMPT;
                 }
                 break;
 
-            case Question::TEMPLATE_IMAGE_QUIZ:
+            case Soal::TEMPLATE_IMAGE_QUIZ:
                 if (empty($data['main_image'])) {
                     return ['valid' => false, 'error' => 'ImageQuiz: field "main_image" kosong.'];
                 }
@@ -756,9 +756,9 @@ PROMPT;
             return [];
         }
 
-        $existing = AssetLibrary::whereIn('filename', $realFilenames)
-            ->where('is_active', true)
-            ->pluck('filename')
+        $existing = PustakaAset::whereIn('nama_file', $realFilenames)
+            ->where('aktif', true)
+            ->pluck('nama_file')
             ->toArray();
 
         return array_values(array_diff($realFilenames, $existing));
@@ -773,8 +773,8 @@ PROMPT;
         Log::warning("[QuizGenerator] Gagal: {$error}");
         return [
             'success'          => false,
-            'question_data'    => null,
-            'assets_required'  => [],
+            'data_soal' => null,
+            'aset_diperlukan' => [],
             'missing_assets'   => [],
             'auto_fetch_log'   => ['fetched' => [], 'failed' => []],
             'raw_json'         => $rawJson,

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
-use App\Models\StudentProgress;
+use App\Models\Pengguna;
+use App\Models\ProgresSiswa;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
@@ -12,13 +12,17 @@ class StudentController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::where('role', 'siswa');
-
+        $query = Pengguna::where('peran', 'siswa');
+        
+        $user = auth()->user();
+        if ($user->peran === 'guru' || $user->peran === 'admin') {
+            $query->where('asal_sekolah', $user->asal_sekolah);
+        }
         if ($request->has('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('nama', 'like', '%' . $request->search . '%');
         }
 
-        $students = $query->latest()->paginate(15);
+        $students = $query->latest()->paginate(5);
         return view('admin.students', compact('students'));
     }
 
@@ -26,26 +30,32 @@ class StudentController extends Controller
      * Mengambil data progres belajar siswa untuk ditampilkan di modal.
      * Dipanggil via AJAX dari halaman Data Siswa.
      */
-    public function progress(User $student)
+    public function progress(Pengguna $student)
     {
+        // Cegah IDOR: Pastikan guru hanya bisa melihat siswa dari sekolahnya sendiri
+        $user = auth()->user();
+        if (($user->peran === 'guru' || $user->peran === 'admin') && $student->asal_sekolah !== $user->asal_sekolah) {
+            return response()->json(['error' => 'Unauthorized Access'], 403);
+        }
+
         // Ambil semua progres siswa
-        $progressData = StudentProgress::where('user_id', $student->id)
-            ->orderBy('answered_at', 'asc')
+        $progressData = ProgresSiswa::where('pengguna_id', $student->id)
+            ->orderBy('dijawab_pada', 'asc')
             ->get();
 
         $total   = $progressData->count();
-        $correct = $progressData->where('is_correct', true)->count();
+        $correct = $progressData->where('benar', true)->count();
         $wrong   = $total - $correct;
 
         // Rata-rata waktu pengerjaan
         $avgTime = $total > 0
-            ? round($progressData->avg('time_spent_seconds'), 1)
+            ? round($progressData->avg('waktu_detik'), 1)
             : 0;
 
         // ── Data Harian (30 hari terakhir) untuk Bar Chart ──
         $thirtyDaysAgo = Carbon::now()->subDays(29)->startOfDay();
         $recentProgress = $progressData->filter(function ($item) use ($thirtyDaysAgo) {
-            return Carbon::parse($item->answered_at)->gte($thirtyDaysAgo);
+            return $item->dijawab_pada && Carbon::parse($item->dijawab_pada)->gte($thirtyDaysAgo);
         });
 
         // Buat array semua 30 hari (agar tidak ada hari kosong di chart)
@@ -57,9 +67,9 @@ class StudentController extends Controller
 
         // Isi data ke map
         foreach ($recentProgress as $item) {
-            $key = Carbon::parse($item->answered_at)->format('d/m');
+            $key = Carbon::parse($item->dijawab_pada)->format('d/m');
             if (isset($dailyMap[$key])) {
-                if ($item->is_correct) {
+                if ($item->benar) {
                     $dailyMap[$key]['correct']++;
                 } else {
                     $dailyMap[$key]['wrong']++;
@@ -79,12 +89,12 @@ class StudentController extends Controller
             $weekEnd   = Carbon::now()->subWeeks($w)->endOfWeek();
 
             $weekData = $progressData->filter(function ($item) use ($weekStart, $weekEnd) {
-                $date = Carbon::parse($item->answered_at);
+                $date = Carbon::parse($item->dijawab_pada);
                 return $date->between($weekStart, $weekEnd);
             });
 
-            $weekCorrect = $weekData->where('is_correct', true)->count();
-            $weekWrong   = $weekData->where('is_correct', false)->count();
+            $weekCorrect = $weekData->where('benar', true)->count();
+            $weekWrong   = $weekData->where('benar', false)->count();
 
             $weekly[] = [
                 'week_label' => $weekStart->format('d M') . ' – ' . $weekEnd->format('d M'),
@@ -103,8 +113,14 @@ class StudentController extends Controller
         ]);
     }
 
-    public function destroy(User $student)
+    public function destroy(Pengguna $student)
     {
+        // Cegah IDOR: Pastikan guru hanya bisa menghapus siswa dari sekolahnya sendiri
+        $user = auth()->user();
+        if (($user->peran === 'guru' || $user->peran === 'admin') && $student->asal_sekolah !== $user->asal_sekolah) {
+            abort(403, 'Unauthorized Action. Anda tidak dapat menghapus siswa dari sekolah lain.');
+        }
+
         $student->delete();
         return back()->with('success', 'Data siswa berhasil dihapus.');
     }

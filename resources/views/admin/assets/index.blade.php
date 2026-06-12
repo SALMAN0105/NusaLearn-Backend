@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>Library Aset — NusaLearn Admin</title>
+    <title>Library Aset — NusaLearn Guru</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
@@ -40,33 +40,27 @@
                     <i class="fa-solid fa-chart-pie w-5 text-center"></i><span>Dashboard</span>
                 </a>
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
-                <a href="{{ route('materials.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('materi.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-book-open w-5 text-center"></i><span>Materi Belajar</span>
                 </a>
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('soal.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-clipboard-question w-5 text-center"></i><span>Bank Soal</span>
                 </a>
                 <a href="{{ route('assets.index') }}" class="nav-active flex items-center gap-3 px-3 py-2.5 border-2 rounded-xl font-bold text-sm transition-all group">
                     <i class="fa-solid fa-images w-5 text-center"></i><span>Library Aset</span>
                 </a>
-                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center"></i><span>Bahasa Daerah</span>
-                </a>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Data Akademik</p>
                 <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-users w-5 text-center"></i><span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-violet-50 dark:hover:bg-p-dark/40 hover:text-violet-600 border-2 border-transparent hover:border-black rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center"></i><span>Wilayah</span>
-                </a>
-            </nav>
+                </nav>
             <div class="border-t-2 border-black dark:border-p-dark p-4">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar" class="w-10 h-10 rounded-full border-2 border-black shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name }}</p>
-                        <p class="text-xs text-gray-400 font-semibold">Administrator</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama }}</p>
+                        <p class="text-xs text-gray-400 font-semibold">Guru</p>
                     </div>
                 </div>
             </div>
@@ -91,16 +85,8 @@
             <main class="flex-1 overflow-x-hidden overflow-y-auto no-scrollbar p-6 lg:p-8 bg-violet-50 dark:bg-[#1e1b4b] dot-grid-bg">
 
                 {{-- Flash messages --}}
-                @if(session('success'))
-                <div class="mb-5 flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-black bg-green-400 shadow-neo-sm text-sm font-bold text-black">
-                    <i class="fa-solid fa-check-circle text-lg"></i> {{ session('success') }}
-                </div>
-                @endif
-                @if($errors->any())
-                <div class="mb-5 flex items-center gap-3 px-5 py-4 rounded-xl border-2 border-black bg-red-400 shadow-neo-sm text-sm font-bold text-black">
-                    <i class="fa-solid fa-circle-exclamation text-lg"></i> {{ $errors->first() }}
-                </div>
-                @endif
+                
+                
 
                 {{-- Stats Bar --}}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -138,10 +124,10 @@
                         <option value="audio" @selected(request('type') === 'audio')>Audio</option>
                         <option value="application" @selected(request('type') === 'application')>Animasi</option>
                     </select>
-                    <select name="category" class="border-2 border-black dark:border-p-dark rounded-xl px-3 py-2 text-sm font-medium bg-white dark:bg-[#2d2460] text-black dark:text-white">
+                    <select name="kategori" class="border-2 border-black dark:border-p-dark rounded-xl px-3 py-2 text-sm font-medium bg-white dark:bg-[#2d2460] text-black dark:text-white">
                         <option value="">Semua Kategori</option>
                         @foreach(['literasi','numerasi','budaya','umum'] as $cat)
-                        <option value="{{ $cat }}" @selected(request('category') === $cat)>{{ ucfirst($cat) }}</option>
+                        <option value="{{ $cat }}" @selected(request('kategori') === $cat)>{{ ucfirst($cat) }}</option>
                         @endforeach
                     </select>
                     <button type="submit" class="bg-violet-600 border-2 border-black text-white rounded-xl px-5 py-2 font-black text-sm shadow-neo-sm hover:shadow-neo transition-all">
@@ -165,7 +151,7 @@
                         {{-- Preview --}}
                         <div class="aspect-square bg-gray-100 dark:bg-[#1e1b4b] flex items-center justify-center overflow-hidden relative">
                             @if($asset->isImage())
-                                <img src="{{ $asset->getUrl() }}" alt="{{ $asset->original_name }}" class="w-full h-full object-cover">
+                                <img src="{{ $asset->getUrl() }}" alt="{{ $asset->nama_asli }}" class="w-full h-full object-cover">
                             @elseif($asset->isAudio())
                                 <i class="fa-solid fa-music text-3xl text-blue-400"></i>
                             @elseif($asset->isLottie())
@@ -179,7 +165,7 @@
                                 <form action="{{ route('assets.toggle', $asset) }}" method="POST">
                                     @csrf @method('PATCH')
                                     <button class="text-xs font-black px-3 py-1.5 rounded-lg border-2 border-white text-white hover:bg-white hover:text-black transition-all">
-                                        {{ $asset->is_active ? 'Nonaktifkan' : 'Aktifkan' }}
+                                        {{ $asset->aktif ? 'Nonaktifkan' : 'Aktifkan' }}
                                     </button>
                                 </form>
                                 <form action="{{ route('assets.destroy', $asset) }}" method="POST" onsubmit="return confirm('Hapus aset ini?')">
@@ -193,18 +179,18 @@
 
                         {{-- Info --}}
                         <div class="p-2">
-                            <p class="text-[10px] font-black text-black dark:text-white truncate" title="{{ $asset->original_name }}">{{ $asset->original_name }}</p>
+                            <p class="text-[10px] font-black text-black dark:text-white truncate" title="{{ $asset->nama_asli }}">{{ $asset->nama_asli }}</p>
                             <div class="flex items-center justify-between mt-1">
                                 <span class="text-[9px] font-black uppercase px-1.5 py-0.5 rounded-md border border-current
-                                    {{ $asset->source_api === 'pixabay' ? 'text-yellow-600' : '' }}
-                                    {{ $asset->source_api === 'pexels' ? 'text-green-600' : '' }}
-                                    {{ $asset->source_api === 'freesound' ? 'text-blue-600' : '' }}
-                                    {{ $asset->source_api === 'lottiefiles' ? 'text-violet-600' : '' }}
-                                    {{ in_array($asset->source_api, ['iconify', 'manual']) ? 'text-gray-500' : '' }}
-                                ">{{ $asset->source_api }}</span>
-                                <span class="text-[9px] text-gray-400 font-semibold">{{ $asset->size_kb }}KB</span>
+                                    {{ $asset->sumber_api === 'pixabay' ? 'text-yellow-600' : '' }}
+                                    {{ $asset->sumber_api === 'pexels' ? 'text-green-600' : '' }}
+                                    {{ $asset->sumber_api === 'freesound' ? 'text-blue-600' : '' }}
+                                    {{ $asset->sumber_api === 'lottiefiles' ? 'text-violet-600' : '' }}
+                                    {{ in_array($asset->sumber_api, ['iconify', 'manual']) ? 'text-gray-500' : '' }}
+                                ">{{ $asset->sumber_api }}</span>
+                                <span class="text-[9px] text-gray-400 font-semibold">{{ $asset->ukuran_kb }}KB</span>
                             </div>
-                            @if(!$asset->is_active)
+                            @if(!$asset->aktif)
                             <div class="mt-1 text-[9px] font-black text-red-500 uppercase">⚠ Nonaktif</div>
                             @endif
                         </div>
@@ -223,9 +209,34 @@
     </div>
 
 <script>
-const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+const csrfToken = document.querySelector('meta[nama="csrf-token"]').getAttribute('content');
 let selectedApi = 'pixabay';
 </script>
 
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>

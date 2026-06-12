@@ -5,30 +5,39 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use App\Models\User;
-use App\Models\Region;
+use Illuminate\Support\Facades\Hash;
+use App\Models\Pengguna;
+use App\Models\Wilayah;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required',
-            'password' => 'required',
+            'nama_pengguna' => 'required',
+            'kata_sandi' => 'required',
         ]);
 
         // Cek kredensial
-        if (!Auth::attempt($request->only('username', 'password'))) {
+        if (!Auth::attempt(['nama_pengguna' => $request->nama_pengguna, 'password' => $request->kata_sandi])) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Username atau password salah',
             ], 401);
         }
 
-        $user = User::where('username', $request->username)->firstOrFail();
+        $user = Pengguna::where('nama_pengguna', $request->nama_pengguna)->firstOrFail();
+
+        // Cek apakah akun aktif
+        if (!$user->aktif) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Akun Anda telah dinonaktifkan oleh Administrator.',
+            ], 403);
+        }
 
         // Cek Role (Hanya Siswa yang boleh login di Mobile)
-        if ($user->role !== 'siswa') {
+        if ($user->peran !== 'siswa') {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Aplikasi ini khusus untuk Siswa.',
@@ -43,14 +52,15 @@ class AuthController extends Controller
             'data' => [
                 'user' => [
                     'id' => $user->id,
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'role' => $user->role,
-                    'school_origin' => $user->school_origin,
-                    'postal_code' => $user->postal_code,
-                    'language_code' => $user->language_code,
-                    'image_url' => $user->image_url 
-                        ? asset('storage/' . $user->image_url) 
+                    'nama' => $user->nama,
+                    'nama_pengguna' => $user->nama_pengguna,
+                    'peran' => $user->peran,
+                    'kelas' => $user->kelas,
+                    'asal_sekolah' => $user->asal_sekolah,
+                    'kode_pos' => $user->kode_pos,
+                    'kode_bahasa' => $user->kode_bahasa,
+                    'url_gambar' => $user->url_gambar 
+                        ? asset('storage/' . $user->url_gambar) 
                         : null,
                 ],
                 'access_token' => $token,
@@ -63,34 +73,38 @@ class AuthController extends Controller
     {
         // ✅ Validasi sesuai nama kolom database ASLI
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'username' => 'required|string|max:50|unique:users',
-            'password' => 'required|string|min:6',
-            'school_origin' => 'required|string',
-            'postal_code' => 'required|string|max:10',
+            'nama' => 'required|string|max:255',
+            'nama_pengguna' => 'required|string|max:50|unique:pengguna',
+            'kata_sandi' => 'required|string|min:6',
+            'asal_sekolah' => 'required|string',
+            'kode_pos' => 'required|string|max:10',
+            'kelas' => 'required|integer|min:1|max:3',
         ]);
 
         // ✅ Query dengan nama kolom ASLI: postal_code (dengan underscore)
-        $region = Region::where('postal_code', $validated['postal_code'])->first();
+        $region = Wilayah::where('kode_pos', $validated['kode_pos'])->first();
 
         // ✅ Validasi region
         if (!$region) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Kode pos tidak terdaftar di sistem. Silakan hubungi admin untuk mendaftarkan wilayah Anda.',
-                'postal_code' => $validated['postal_code'],
+                'kode_pos' => $validated['kode_pos'],
             ], 422);
         }
 
         // ✅ Create user dengan language_code dari region
-        $user = User::create([
-            'name' => $validated['name'],
-            'username' => $validated['username'],
-            'password' => bcrypt($validated['password']),
-            'role' => 'siswa',
-            'school_origin' => $validated['school_origin'],
-            'postal_code' => $validated['postal_code'],
-            'language_code' => $region->language_code, // ✅ DENGAN UNDERSCORE
+        $user = Pengguna::create([
+            'nama' => $validated['nama'],
+            'nama_pengguna' => $validated['nama_pengguna'],
+            'kata_sandi' => Hash::make($validated['kata_sandi']),
+            'asal_sekolah' => $validated['asal_sekolah'],
+            'kode_pos' => $validated['kode_pos'],
+            'kode_bahasa' => $region->kode_bahasa, // ✅ DENGAN UNDERSCORE
+            'peran' => 'siswa',
+            'kelas' => $validated['kelas'],
+            'level_saat_ini' => 1,
+            'aktif' => 1
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -101,14 +115,15 @@ class AuthController extends Controller
             'data' => [
                 'user' => [
                     'id' => $user->id,
-                    'name' => $user->name,
-                    'username' => $user->username,
-                    'role' => $user->role,
-                    'school_origin' => $user->school_origin,
-                    'postal_code' => $user->postal_code,
-                    'language_code' => $user->language_code,
-                    'image_url' => $user->image_url 
-                        ? asset('storage/' . $user->image_url) 
+                    'nama' => $user->nama,
+                    'nama_pengguna' => $user->nama_pengguna,
+                    'peran' => $user->peran,
+                    'kelas' => $user->kelas,
+                    'asal_sekolah' => $user->asal_sekolah,
+                    'kode_pos' => $user->kode_pos,
+                    'kode_bahasa' => $user->kode_bahasa,
+                    'url_gambar' => $user->url_gambar 
+                        ? asset('storage/' . $user->url_gambar) 
                         : null,
                 ],
                 'access_token' => $token,

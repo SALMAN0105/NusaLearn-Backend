@@ -145,7 +145,7 @@
         <div class="brand">
             <div class="brand-icon"><i class="fa-solid fa-shield-halved"></i></div>
             <h1>Nusa<span>Learn</span></h1>
-            <p>Pemulihan Akses Administrator</p>
+            <p>Pemulihan Akses Guru</p>
         </div>
 
         <div class="card">
@@ -190,7 +190,7 @@
                 <label class="field-label">Alamat Email Valid</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-envelope input-icon"></i>
-                    <input class="field-input" type="email" name="email" required autofocus placeholder="admin@sekolah.sch.id">
+                    <input class="field-input" type="email" name="email" required autofocus placeholder="guru@sekolah.sch.id">
                 </div>
                 <button class="btn-submit" type="submit">
                     <i class="fa-solid fa-paper-plane"></i> Kirim Kode OTP
@@ -218,7 +218,7 @@
             @elseif($step === 'reset_password')
             <div class="section-head">
                 <h2>Buat Password Baru</h2>
-                <p>Buat password yang kuat untuk akun Anda.</p>
+                <p>Buat kata_sandi yang kuat untuk akun Anda.</p>
             </div>
             <div class="warn-box">
                 <i class="fa-solid fa-triangle-exclamation"></i>
@@ -229,14 +229,14 @@
                 <label class="field-label">Password Baru</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-key input-icon"></i>
-                    <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:46px">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
+                    <input class="field-input" id="kata_sandi" type="password" name="kata_sandi" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('kata_sandi','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
                 </div>
                 <label class="field-label">Konfirmasi Password Baru</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-lock input-icon"></i>
-                    <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:46px">
-                    <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
+                    <input class="field-input" id="kata_sandi_confirmation" type="password" name="kata_sandi_confirmation" required placeholder="••••••••" style="padding-right:46px">
+                    <button type="button" class="toggle-pw" onclick="togglePassword('kata_sandi_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
                 </div>
                 <button class="btn-submit" type="submit">
                     <i class="fa-solid fa-rotate-right"></i> Update Password & Login
@@ -267,5 +267,30 @@
             setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
         });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>

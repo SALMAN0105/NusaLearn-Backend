@@ -14,19 +14,17 @@ use App\Http\Controllers\Admin\AssetController;
 // ═══════════════════════════════════════════════════════════════════════════
 
 // Auth
-Route::post('/login',    [AuthController::class, 'login']);
-Route::post('/register', [AuthController::class, 'register']);
+Route::middleware('throttle:10,1')->group(function () {
+    Route::post('/login',    [AuthController::class, 'login']);
+    Route::post('/register', [AuthController::class, 'register']);
+});
 
 // Region check (dipanggil sebelum login saat registrasi)
 Route::post('/check-region',      [SyncController::class, 'checkRegion']);
 Route::post('/sync/check-region', [SyncController::class, 'checkRegion']); // alias lama
 
-// Daftar sekolah untuk dropdown registrasi Flutter
 Route::get('/schools', function () {
-    $schools = \App\Models\User::where('role', 'admin')
-        ->whereNotNull('school_origin')
-        ->distinct()
-        ->pluck('school_origin');
+    $schools = \App\Models\Sekolah::orderBy('nama', 'asc')->pluck('nama');
 
     return response()->json([
         'status' => 'success',
@@ -41,7 +39,7 @@ Route::get('/schools', function () {
 Route::middleware('auth:sanctum')->group(function () {
 
     // ── Auth ───────────────────────────────────────────────────────────
-    Route::get('/user',      fn(Request $r) => $r->user());
+    Route::get('/user',      fn(Request $r) => $r->pengguna());
     Route::post('/logout',   [AuthController::class, 'logout']);
 
     // ── Profile ────────────────────────────────────────────────────────
@@ -50,9 +48,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Sync: Materi & Soal ────────────────────────────────────────────
     Route::prefix('sync')->name('api.sync.')->group(function () {
-        Route::get('/materials',  [SyncController::class, 'getMaterials'])->name('materials');
-        Route::get('/questions',  [SyncController::class, 'getQuestions'])->name('questions');
+        Route::get('/materials',  [SyncController::class, 'getMaterials'])->name('materi');
+        Route::get('/questions',  [SyncController::class, 'getQuestions'])->name('soal');
         Route::post('/progress',  [SyncController::class, 'syncProgress'])->name('progress');
+        Route::get('/progress',   [SyncController::class, 'syncDownProgress'])->name('progress.down');
 
         // ── Asset Sync (BARU) ──────────────────────────────────────────
         // Flutter kirim daftar filename → server balas URL + info

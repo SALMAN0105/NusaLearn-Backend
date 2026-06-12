@@ -3,60 +3,65 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Material;
-use App\Models\Language;
-use App\Models\User;
+use App\Models\Materi;
+use App\Models\Bahasa;
+use App\Models\Pengguna;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
-use Symfony\Component\Process\Process;
-use Symfony\Component\Process\Exception\ProcessFailedException;
 
 class MaterialController extends Controller
 {
     public function index(Request $request)
     {
-        $languages = Language::where('is_active', true)->get();
-        $query = Material::query();
+        $languages = Bahasa::where('aktif', true)->get();
+        $query = Materi::query();
 
         if ($request->has('search') && $request->search != '') {
-            $query->where('title_indo', 'LIKE', "%{$request->search}%");
+            $query->where('judul', 'LIKE', "%{$request->search}%");
         }
 
-        if ($request->has('language_scope') && $request->language_scope != 'Semua Bahasa') {
-            $query->where('language_code', $request->language_scope);
+        if ($request->has('language_scope') && $request->language_scope != 'Semua Bahasa' && $request->language_scope != '') {
+            $query->where('kode_bahasa', $request->language_scope);
         }
 
         $currentUser = auth()->user();
-        if ($currentUser->role === 'admin') {
-            $query->where('school_origin', $currentUser->school_origin);
+        if ($currentUser->peran === 'admin' || $currentUser->peran === 'guru') {
+            $query->where('asal_sekolah', $currentUser->asal_sekolah);
         }
 
-        $materials = $query->get();
+        $materials = $query->latest()->paginate(5);
 
+        // In case the view expects Admin/materials or Administrator/materials
+        // Route namespace determines this, but it's typically 'admin.materials' based on previous code.
+        if ($currentUser->peran === 'administrator') {
+            return view('administrator.materials', compact('materials', 'languages'));
+        }
         return view('admin.materials', compact('materials', 'languages'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'title_indo' => 'required|string|max:255',
-            'category' => 'required|in:literasi,numerasi,budaya',
-            'level_difficulty' => 'required|integer|min:1|max:3',
-            'language_code' => 'required',
+            'judul' => 'required|string|max:255',
+            'kategori' => 'required|in:literasi,numerasi,budaya',
+            'kelas' => 'required|integer|min:1|max:3',
+            'tingkat_kesulitan' => 'required|integer|min:1|max:5',
+            'kode_bahasa' => 'required',
             'json_file' => 'required|file|mimes:json,txt|max:2048', 
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $data = [
-            'school_origin' => auth()->user()->school_origin,
-            'title_indo' => $request->title_indo,
-            'category' => $request->category,
-            'level_difficulty' => $request->level_difficulty,
-            'language_code' => $request->language_code,
-        ];
+        $currentUser = auth()->user();
 
-        $jsonDebug = "File tidak diupload";
+        $data = [
+            'asal_sekolah' => ($currentUser->peran === 'admin' || $currentUser->peran === 'guru') ? $currentUser->asal_sekolah : null,
+            'judul' => $request->judul,
+            'kategori' => $request->kategori,
+            'kelas' => $request->kelas,
+            'tingkat_kesulitan' => $request->tingkat_kesulitan,
+            'kode_bahasa' => $request->kode_bahasa,
+        ];
 
         // Proses JSON
         if ($request->hasFile('json_file')) {
@@ -65,55 +70,28 @@ class MaterialController extends Controller
             $decoded = json_decode($jsonContent, true);
             
             if (!isset($decoded['metadata']) || !isset($decoded['knowledge_map'])) {
-            return back()->withErrors(['json_file' => 'Struktur JSON tidak memenuhi standar Metadata-First (Missing knowledge_map).']);
+                return back()->withErrors(['json_file' => 'Struktur JSON tidak memenuhi standar Metadata-First (Missing knowledge_map).']);
             }
 
-            $jsonDebug = "✅ JSON Valid (" . count($decoded) . " blok konten)";
-            $data['content_indo'] = $decoded;
+            $data['konten'] = $decoded;
         }
-
-        $pythonScript = base_path('python/ai_processor.py');
-        $pythonBinary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
-        $isScriptExists = file_exists($pythonScript) ? "✅ Ditemukan" : "❌ TIDAK DITEMUKAN";
-
-        // dd([
-        //     '🔹 1. Data Input Form' => $request->all(),
-        //     '🔹 2. Status Upload Gambar' => $request->hasFile('image') ? 'Ada Gambar' : 'Tidak Ada',
-        //     '🔹 3. Analisa JSON' => [
-        //         'Status' => $jsonDebug,
-        //         'Sample Data (Awal)' => $decoded ? array_slice($decoded, 0, 1) : null
-        //     ],
-        //     '🔹 4. Konfigurasi Backend AI' => [
-        //         'Operating System' => PHP_OS,
-        //         'Python Binary' => $pythonBinary,
-        //         'Path Script Python' => $pythonScript,
-        //         'Status File Script' => $isScriptExists
-        //     ],
-        //     '🔹 5. Estimasi Command CLI' => sprintf('start /B %s "%s" [ID_MATERI]', $pythonBinary, $pythonScript)
-        // ]);
 
         // Upload Gambar
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('materials', 'public');
-            $data['image_url'] = $path;
+            $data['url_gambar'] = $path;
         }
 
         // Simpan ke database
-        $material = Material::create($data);
+        $material = Materi::create($data);
 
-        // ✅ TRIGGER PYTHON SCRIPT OTOMATIS
+        // TRIGGER PYTHON SCRIPT OTOMATIS
         $this->processAI($material->id);
 
-        return redirect()->route('materials.index')
+        return redirect()->back()
             ->with('success', 'Materi berhasil ditambahkan! AI sedang diproses di background.');
     }
 
-    /**
-     * ✅ FUNGSI BARU: TRIGGER PYTHON
-     */
-    /**
-     * ✅ FUNGSI BARU: TRIGGER PYTHON
-     */
     private function processAI($materialId)
     {
         try {
@@ -126,9 +104,8 @@ class MaterialController extends Controller
 
             $pythonBinary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
 
-            // Eksekusi aman non-blocking menggunakan native queue
             dispatch(function() use ($pythonBinary, $pythonScript, $materialId) {
-                $command = sprintf('"%s" "%s" %d', $pythonBinary, $pythonScript, $materialId);
+                $command = sprintf('"%s" "%s" %d', escapeshellarg($pythonBinary), escapeshellarg($pythonScript), $materialId);
                 exec($command . ' 2>&1', $output, $returnVar);
                 Log::info("AI Processor result for ID {$materialId}: \n" . implode("\n", $output));
             })->afterResponse();
@@ -142,36 +119,46 @@ class MaterialController extends Controller
 
     public function regenerateAI($id)
     {
-        $material = Material::findOrFail($id);
-        $material->update(['ai_status' => 'pending', 'ai_embeddings' => null]);
+        $material = Materi::findOrFail($id);
         
-        $pythonScript = base_path('python/ai_processor.py');
-        $pythonBinary = (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') ? 'python' : 'python3';
+        // Pencegahan IDOR
+        $currentUser = auth()->user();
+        if (($currentUser->peran === 'admin' || $currentUser->peran === 'guru') && $material->asal_sekolah !== $currentUser->asal_sekolah) {
+            abort(403, 'Unauthorized Action. Anda tidak dapat memproses materi dari sekolah lain.');
+        }
 
-        dispatch(function() use ($pythonBinary, $pythonScript, $id) {
-            $command = sprintf('"%s" "%s" %d', $pythonBinary, $pythonScript, $id);
-            exec($command . ' 2>&1', $output);
-            Log::info("AI Regenerate result for ID {$id}: \n" . implode("\n", $output));
-        })->afterResponse();
+        $material->update(['status_ai' => 'pending', 'ai_embeddings' => null]);
+        
+        $this->processAI($material->id);
         
         return response()->json(['status' => 'success', 'message' => 'Regenerasi dimulai']);
     }
 
-    public function update(Request $request, Material $material)
+    public function update(Request $request, $id)
     {
+        $material = Materi::findOrFail($id);
+
+        // Pencegahan IDOR
+        $currentUser = auth()->user();
+        if (($currentUser->peran === 'admin' || $currentUser->peran === 'guru') && $material->asal_sekolah !== $currentUser->asal_sekolah) {
+            abort(403, 'Unauthorized Action. Anda tidak dapat mengubah materi dari sekolah lain.');
+        }
+
         $request->validate([
-            'title_indo' => 'required|string|max:255',
-            'category' => 'required',
-            'level_difficulty' => 'required|integer',
-            'language_code' => 'required',
+            'judul' => 'required|string|max:255',
+            'kategori' => 'required',
+            'kelas' => 'required|integer|min:1|max:3',
+            'tingkat_kesulitan' => 'required|integer|min:1|max:5',
+            'kode_bahasa' => 'required',
             'json_file' => 'nullable|file|mimes:json,txt|max:2048',
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
         ]);
 
-        $material->title_indo = $request->title_indo;
-        $material->category = $request->category;
-        $material->level_difficulty = $request->level_difficulty;
-        $material->language_code = $request->language_code;
+        $material->judul = $request->judul;
+        $material->kategori = $request->kategori;
+        $material->kelas = $request->kelas;
+        $material->tingkat_kesulitan = $request->tingkat_kesulitan;
+        $material->kode_bahasa = $request->kode_bahasa;
 
         // Cek Ganti JSON
         if ($request->hasFile('json_file')) {
@@ -183,35 +170,40 @@ class MaterialController extends Controller
                 return back()->withErrors(['json_file' => 'File JSON baru tidak valid.']);
             }
 
-            $material->content_indo = $decoded;
-            
-            // ✅ TRIGGER AI LAGI KARENA KONTEN BERUBAH
-            $material->ai_status = 'pending';
+            $material->konten = $decoded;
+            $material->status_ai = 'pending';
         }
 
         // Cek Ganti Gambar
         if ($request->hasFile('image')) {
-            if ($material->image_url && Storage::disk('public')->exists($material->image_url)) {
-                Storage::disk('public')->delete($material->image_url);
+            if ($material->url_gambar && Storage::disk('public')->exists($material->url_gambar)) {
+                Storage::disk('public')->delete($material->url_gambar);
             }
             
             $path = $request->file('image')->store('materials', 'public');
-            $material->image_url = $path;
+            $material->url_gambar = $path;
         }
 
         $material->save();
 
-        // ✅ TRIGGER PYTHON JIKA KONTEN BERUBAH
         if ($request->hasFile('json_file')) {
             $this->processAI($material->id);
         }
 
-        return redirect()->route('materials.index')->with('success', 'Data materi diperbarui!');
+        return redirect()->back()->with('success', 'Data materi diperbarui!');
     }
 
-    public function destroy(Material $material)
+    public function destroy($id)
     {
+        $material = Materi::findOrFail($id);
+        
+        // Pencegahan IDOR
+        $currentUser = auth()->user();
+        if (($currentUser->peran === 'admin' || $currentUser->peran === 'guru') && $material->asal_sekolah !== $currentUser->asal_sekolah) {
+            abort(403, 'Unauthorized Action. Anda tidak dapat menghapus materi dari sekolah lain.');
+        }
+
         $material->delete();
-        return redirect()->route('materials.index')->with('success', 'Materi berhasil dihapus.');
+        return redirect()->back()->with('success', 'Materi berhasil dihapus.');
     }
 }

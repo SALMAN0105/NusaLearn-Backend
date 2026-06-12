@@ -12,23 +12,30 @@ class ProfileController extends Controller
     // 1. Update Profil (Nama & Foto)
     public function updateProfile(Request $request)
     {
+        $user = $request->user();
+
         $request->validate([
-            'name' => 'required|string|max:255',
+            'nama' => 'required|string|max:255',
+            'nama_pengguna' => 'nullable|string|max:255|unique:pengguna,nama_pengguna,' . $user->id,
             'image' => 'nullable|image|mimes:jpeg,png,jpg|max:2048', // Max 2MB
         ]);
 
-        $user = $request->user();
-        $user->name = $request->name;
+        $user->nama = $request->nama;
+        if ($request->has('nama_pengguna') && $request->nama_pengguna != null) {
+            $user->nama_pengguna = $request->nama_pengguna;
+        }
 
         // Upload Foto jika ada
         if ($request->hasFile('image')) {
-            // Hapus foto lama jika bukan default (opsional)
-            // if ($user->image_url) Storage::disk('public')->delete($user->image_url);
+            // Hapus foto lama jika bukan default
+            if ($user->url_gambar) {
+                Storage::disk('public')->delete($user->url_gambar);
+            }
 
             $path = $request->file('image')->store('profile_photos', 'public');
             // Simpan path relatif agar mudah diakses via API
             // Pastikan Anda punya accessor atau logic URL di Flutter
-            $user->image_url = $path; 
+            $user->url_gambar = $path; 
         }
 
         $user->save();
@@ -37,9 +44,10 @@ class ProfileController extends Controller
             'status' => 'success',
             'message' => 'Profil berhasil diperbarui',
             'data' => [
-                'name' => $user->name,
+                'nama' => $user->nama,
+                'nama_pengguna' => $user->nama_pengguna,
                 // Pastikan kirim Full URL
-                'image_url' => $user->image_url ? asset('storage/' . $user->image_url) : null,
+                'url_gambar' => $user->url_gambar ? asset('storage/' . $user->url_gambar) : null,
             ]
         ]);
     }
@@ -55,14 +63,14 @@ class ProfileController extends Controller
         $user = $request->user();
 
         // Cek password lama
-        if (!Hash::check($request->current_password, $user->password)) {
+        if (!Hash::check($request->current_password, $user->kata_sandi)) {
             return response()->json([
                 'status' => 'error',
                 'message' => 'Kata sandi lama salah.',
             ], 422);
         }
 
-        $user->password = Hash::make($request->new_password);
+        $user->kata_sandi = Hash::make($request->new_password);
         $user->save();
 
         return response()->json([

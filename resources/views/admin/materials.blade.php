@@ -135,32 +135,24 @@
                     <i class="fa-solid fa-file-export w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Kelola File</span>
                 </a>
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('soal.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
 
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Bahasa Daerah</span>
-                </a>
                 <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-users w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Data Siswa</span>
-                </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Wilayah</span>
                 </a>
             </nav>
 
             <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar Admin" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama ?? 'Administrator' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                     <form action="{{ route('logout') }}" method="POST">
@@ -219,7 +211,7 @@
                                 class="w-full sm:w-auto border-2 border-black dark:border-p-dark bg-p-xlt dark:bg-[#1e1b4b] rounded-xl py-3 px-4 pr-10 text-sm text-black dark:text-white font-bold outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                             <option value="">Global Filter (Semua)</option>
                             @foreach($languages ?? [] as $lang) 
-                                <option value="{{ $lang->code }}" {{ request('language_scope') == $lang->code ? 'selected' : '' }}>{{ $lang->name }}</option> 
+                                <option value="{{ $lang->kode }}" {{ request('language_scope') == $lang->kode ? 'selected' : '' }}>{{ $lang->nama }}</option> 
                             @endforeach
                         </select>
                     </form>
@@ -247,43 +239,43 @@
                                 <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-4">
-                                            @if(isset($item->image_url) && $item->image_url)
-                                                <img src="{{ asset('storage/' . $item->image_url) }}" class="w-12 h-12 rounded-xl object-cover border-2 border-black shadow-neo-sm">
+                                            @if(isset($item->url_gambar) && $item->url_gambar)
+                                                <img src="{{ asset('storage/' . $item->url_gambar) }}" class="w-12 h-12 rounded-xl object-cover border-2 border-black shadow-neo-sm">
                                             @else
                                                 <div class="w-12 h-12 rounded-xl bg-p border-2 border-black flex items-center justify-center text-white font-black text-xl shadow-neo-sm uppercase">
-                                                    {{ substr($item->title_indo ?? 'M', 0, 1) }}
+                                                    {{ substr($item->judul ?? 'M', 0, 1) }}
                                                 </div>
                                             @endif
                                             <div>
-                                                <div class="font-extrabold text-black dark:text-white text-base">{{ $item->title_indo ?? 'Untitled Block' }}</div>
+                                                <div class="font-extrabold text-black dark:text-white text-base">{{ $item->judul ?? 'Untitled Block' }}</div>
                                                 <div class="text-[11px] font-bold text-gray-400 dark:text-purple-300/60 mt-0.5 font-mono uppercase">Pointer: #{{ $item->id ?? 'N/A' }}</div>
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <span class="px-3 py-1 rounded-md text-[11px] font-black uppercase tracking-wider bg-p-xlt dark:bg-[#1e1b4b] text-black dark:text-white border-2 border-black dark:border-p-dark shadow-neo-sm">
-                                            {{ $item->category ?? 'General' }}
+                                            {{ $item->kategori ?? 'General' }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <span class="text-[11px] font-black tracking-wider uppercase text-black bg-neo-yellow border-2 border-black px-2.5 py-1 rounded-md shadow-neo-sm">
-                                            {{ ($item->language_code ?? 'global') == 'global' ? 'Global' : $item->language_code }}
+                                            {{ ($item->kode_bahasa ?? 'global') == 'global' ? 'Global' : $item->kode_bahasa }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-4 text-center">
                                         <div class="flex justify-center text-neo-yellow dark:text-yellow-400 text-sm gap-0.5 drop-shadow-sm">
                                             @for($i = 1; $i <= 3; $i++)
-                                                <i class="fa-{{ $i <= ($item->level_difficulty ?? 1) ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
+                                                <i class="fa-{{ $i <= ($item->tingkat_kesulitan ?? 1) ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
                                             @endfor
                                         </div>
                                     </td>
                                     
                                     <td class="px-6 py-4 text-center">
-                                        @if(($item->ai_status ?? 'pending') == 'ready')
+                                        @if(($item->status_ai ?? 'pending') == 'ready')
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-green text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-check"></i> Ready</span>
-                                        @elseif(($item->ai_status ?? 'pending') == 'processing')
+                                        @elseif(($item->status_ai ?? 'pending') == 'processing')
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-yellow text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-gear fa-spin"></i> Processing</span>
-                                        @elseif(($item->ai_status ?? 'pending') == 'failed')
+                                        @elseif(($item->status_ai ?? 'pending') == 'failed')
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-neo-red text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-xmark"></i> Failed</span>
                                         @else
                                             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-black uppercase bg-white text-black border-2 border-black shadow-neo-sm"><i class="fa-solid fa-pause"></i> Standby</span>
@@ -296,7 +288,7 @@
                                                 <i class="fa-solid fa-pen-to-square text-sm"></i>
                                             </button>
                                             
-                                            <form id="delete-form-{{ $item->id }}" action="{{ route('materials.destroy', $item->id ?? 0) }}" method="POST" class="inline">
+                                            <form id="delete-form-{{ $item->id }}" action="{{ route('materi.destroy', $item->id ?? 0) }}" method="POST" class="inline">
                                                 @csrf @method('DELETE')
                                                 <button type="button" onclick="confirmDelete('{{ $item->id }}')" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm" title="Drop Material">
                                                     <i class="fa-solid fa-trash-can text-sm"></i>
@@ -317,9 +309,96 @@
                                 @endforelse
                             </tbody>
                         </table>
+                            <div class="px-6 py-4 border-t-2 border-black dark:border-p-dark bg-p-xlt dark:bg-[#1e1b4b]">
+                                {{ $materials->links() }}
+                            </div>
                     </div>
                 </div>
             </main>
+        </div>
+    </div>
+
+    <div id="modal-add" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-add')"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-4xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 overflow-y-auto max-h-[90vh] transform transition-all scale-95 opacity-0">
+            <div class="pt-6 pb-5 px-8 border-b-2 border-black dark:border-p-dark bg-p flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
+                        <i class="fa-solid fa-plus text-black text-sm"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-black text-white tracking-tight leading-none">Materi Baru</h3>
+                        <p class="text-[11px] font-semibold text-white/80 mt-1">Buat materi baru dan unggah payload JSON.</p>
+                    </div>
+                </div>
+                <button type="button" onclick="toggleModal('modal-add')" aria-label="Close Modal" class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="px-8 py-8 bg-white dark:bg-[#2d2460]">
+                <form action="{{ route('materi.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
+                    @csrf
+                    <div>
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Identifier (Judul Materi)</label>
+                        <input name="judul" type="text" placeholder="Contoh: Logika Algoritma Dasar" required class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kategori Engine</label>
+                            <select name="kategori" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="literasi">Literasi</option>
+                                <option value="numerasi">Numerasi</option>
+                                <option value="budaya">Budaya</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Level Skalabilitas</label>
+                            <select name="tingkat_kesulitan" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="1">Lvl. 1 (Sangat Dasar)</option><option value="2">Lvl. 2 (Dasar)</option><option value="3">Lvl. 3 (Menengah)</option><option value="4">Lvl. 4 (Kompleks)</option><option value="5">Lvl. 5 (Sangat Kompleks)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Target Bahasa</label>
+                            <div class="relative">
+                                <i class="fa-solid fa-language absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
+                                <select name="kode_bahasa" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none" required>
+                                    <option value="global">Indonesia (Umum)</option>
+                                    @foreach($languages ?? [] as $lang) 
+                                        <option value="{{ $lang->kode }}">{{ $lang->nama }}</option> 
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kelas Target</label>
+                            <select name="kelas" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="1">Kelas 1</option><option value="2">Kelas 2</option><option value="3">Kelas 3</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Upload Payload (.json) - <span class="text-p lowercase font-bold">Wajib</span></label>
+                        <div class="border-2 border-dashed border-black dark:border-p-dark bg-neo-cyan/20 dark:bg-p-dark/20 rounded-xl p-8 text-center hover:bg-neo-cyan/40 dark:hover:bg-p-dark/40 transition-colors relative group">
+                            <div class="flex flex-col items-center justify-center pointer-events-none">
+                                <div class="w-12 h-12 bg-white dark:bg-[#2d2460] border-2 border-black dark:border-p-dark rounded-xl flex items-center justify-center text-xl text-p dark:text-purple-400 mb-3 group-hover:-translate-y-1 transition-transform shadow-neo-sm">
+                                    <i class="fa-solid fa-file-code"></i>
+                                </div>
+                                <span class="text-sm font-black text-black dark:text-white mb-1 uppercase tracking-wide">Pilih File JSON</span>
+                                <span id="add_file_json_name" class="text-[11px] font-bold text-p dark:text-purple-400 font-mono">Payload berisi konten materi statis</span>
+                            </div>
+                            <input type="file" id="add_file_json" name="json_file" accept=".json" required class="opacity-0 absolute inset-0 w-full h-full cursor-pointer" onchange="document.getElementById('add_file_json_name').textContent = this.files.length > 0 ? 'File: ' + this.files[0].name : 'Payload berisi konten materi statis'">
+                        </div>
+                    </div>
+                    <div class="pt-2">
+                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Aset Visual (Thumbnail)</label>
+                        <input type="file" name="image" accept="image/*" class="block w-full text-xs font-bold text-gray-500 dark:text-purple-300/70 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-2 file:border-black file:text-xs file:font-black file:uppercase file:tracking-wider file:bg-white file:text-black hover:file:bg-gray-100 file:transition-all file:cursor-pointer cursor-pointer border-2 border-black dark:border-p-dark rounded-xl bg-p-xlt dark:bg-[#1e1b4b] outline-none">
+                    </div>
+                    <div class="flex justify-end gap-3 pt-6 border-t-2 border-p-lt dark:border-p-dark mt-6">
+                        <button type="button" onclick="toggleModal('modal-add')" class="px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-black dark:text-white text-sm font-black shadow-neo-sm hover:-translate-y-0.5 hover:shadow-neo transition-all">Batal</button>
+                        <button type="submit" class="px-5 py-2.5 bg-p border-2 border-black text-white rounded-xl text-sm font-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-p-dark transition-all">Unggah Materi <i class="fa-solid fa-cloud-arrow-up ml-1"></i></button>
+                    </div>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -350,22 +429,30 @@
                     
                     <div>
                         <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Identifier (Judul Materi)</label>
-                        <input id="edit_title_indo" name="title_indo" type="text" placeholder="Contoh: Logika Algoritma Dasar" required
+                        <input id="edit_judul" name="judul" type="text" placeholder="Contoh: Logika Algoritma Dasar" required
                                class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kategori Engine</label>
-                            <select id="edit_category" name="category" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_kategori" name="kategori" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="literasi">Literasi</option>
                                 <option value="numerasi">Numerasi</option>
                                 <option value="budaya">Budaya</option>
                             </select>
                         </div>
                         <div>
+                            <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kelas Target</label>
+                            <select id="edit_kelas" name="kelas" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                                <option value="1">Kelas 1</option>
+                                <option value="2">Kelas 2</option>
+                                <option value="3">Kelas 3</option>
+                            </select>
+                        </div>
+                        <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Level Skalabilitas</label>
-                            <select id="edit_level_difficulty" name="level_difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_tingkat_kesulitan" name="tingkat_kesulitan" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="1">Lvl. 1 (Dasar)</option>
                                 <option value="2">Lvl. 2 (Menengah)</option>
                                 <option value="3">Lvl. 3 (Kompleks)</option>
@@ -373,10 +460,10 @@
                         </div>
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Target Lingual</label>
-                            <select id="edit_language_code" name="language_code" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
+                            <select id="edit_kode_bahasa" name="kode_bahasa" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all cursor-pointer appearance-none">
                                 <option value="global">Global (Unbound)</option>
                                 @foreach($languages ?? [] as $lang) 
-                                    <option value="{{ $lang->code }}">{{ $lang->name }}</option> 
+                                    <option value="{{ $lang->kode }}">{{ $lang->nama }}</option> 
                                 @endforeach
                             </select>
                         </div>
@@ -519,18 +606,19 @@
         // ── Material Management Logic ──────────────────────────────────────────
         function editMaterial(material) {
             const form = document.getElementById('edit-material-form');
-            form.action = `/admin/materials/${material.id}`;
+            form.action = `{{ url('admin/materi') }}/` + material.id;
             
-            document.getElementById('edit_title_indo').value = material.title_indo;
-            document.getElementById('edit_category').value = material.category;
-            document.getElementById('edit_level_difficulty').value = material.level_difficulty;
-            document.getElementById('edit_language_code').value = material.language_code;
+            document.getElementById('edit_judul').value = material.judul;
+            document.getElementById('edit_kategori').value = material.kategori;
+            document.getElementById('edit_tingkat_kesulitan').value = material.tingkat_kesulitan;
+            document.getElementById('edit_kode_bahasa').value = material.kode_bahasa;
+            if(document.getElementById('edit_kelas')) document.getElementById('edit_kelas').value = material.kelas;
             
             const previewContainer = document.getElementById('edit-image-preview-container');
             const previewImg = document.getElementById('edit-image-preview');
             
-            if (material.image_url) {
-                previewImg.src = `/storage/${material.image_url}`;
+            if (material.url_gambar) {
+                previewImg.src = `/storage/${material.url_gambar}`;
                 previewContainer.classList.remove('hidden');
             } else {
                 previewContainer.classList.add('hidden');
@@ -550,6 +638,32 @@
                 document.getElementById('delete-form-' + deleteId).submit();
             }
         });
+    </script>
+
+    <!-- SweetAlert2 Neo-Brutalism -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        const neoSwal = Swal.mixin({
+            customClass: {
+                popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+                title: 'font-black uppercase tracking-tight text-xl',
+                confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+                htmlContainer: 'font-bold text-sm text-gray-700'
+            },
+            buttonsStyling: false
+        });
+
+        window.showCustomAlert = function(msg) {
+            neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+        };
+
+        @if(session('success'))
+            neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+        @endif
+
+        @if($errors->any())
+            neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+        @endif
     </script>
 </body>
 </html>

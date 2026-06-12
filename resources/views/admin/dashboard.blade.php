@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard Administrator - NusaLearn</title>
+    <title>Dashboard Guru - NusaLearn</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -142,7 +142,7 @@
                 </a>
 
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
-                <a href="{{ route('materials.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('materi.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-book-open w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Materi Belajar</span>
                 </a>
@@ -150,32 +150,24 @@
                     <i class="fa-solid fa-file-export w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Kelola File</span>
                 </a>
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('soal.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
 
-                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Bahasa Daerah</span>
-                </a>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Data Akademik</p>
                 <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-users w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Wilayah</span>
-                </a>
-            </nav>
+                </nav>
 
             <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar Admin" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama ?? 'Guru' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                     <form action="{{ route('logout') }}" method="POST">
@@ -210,11 +202,7 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    @if(session('success'))
-                    <div class="hidden sm:flex bg-neo-green border-2 border-black text-black font-bold rounded-xl px-4 py-2 items-center gap-2 shadow-neo-sm text-sm fade-in">
-                        <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
-                    </div>
-                    @endif
+                    
 
                     <button id="theme-toggle" aria-label="Toggle Dark Mode"
                         class="w-10 h-10 flex items-center justify-center bg-p-lt dark:bg-p-dark/40 border-2 border-black dark:border-p-dark text-p dark:text-purple-300 rounded-xl shadow-neo-sm hover:bg-p hover:text-white dark:hover:bg-p transition-all">
@@ -297,9 +285,6 @@
                                 <h2 class="text-base font-black text-black dark:text-white uppercase tracking-widest flex items-center gap-2">
                                     <span class="w-1.5 h-5 bg-p rounded-full inline-block"></span> Log Aktivitas
                                 </h2>
-                                <button class="text-xs font-black text-p-dark dark:text-purple-200 border-2 border-p-mid bg-p-lt dark:bg-p-dark/30 px-3.5 py-2 rounded-xl hover:bg-p hover:text-white hover:border-black transition-all shadow-neo-sm uppercase">
-                                    Lihat Semua <i class="fa-solid fa-arrow-right ml-1"></i>
-                                </button>
                             </div>
 
                             <div class="bg-white dark:bg-[#2d2460] border-2 border-black dark:border-p-dark rounded-2xl shadow-neo overflow-hidden">
@@ -318,19 +303,19 @@
                                             <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
                                                 <td class="px-6 py-4">
                                                     <div class="flex items-center gap-3">
-                                                        <img src="https://ui-avatars.com/api/?name={{ $progress->user->name ?? 'S' }}&background=7C3AED&color=fff&bold=true&size=32"
+                                                        <img src="https://ui-avatars.com/api/?name={{ $progress->user->nama ?? 'S' }}&background=7C3AED&color=fff&bold=true&size=32"
                                                              class="w-9 h-9 rounded-full border-2 border-black shadow-neo-sm flex-shrink-0" alt="User">
                                                         <div>
-                                                            <div class="font-bold text-black dark:text-white">{{ $progress->user->name ?? 'Siswa Anonymous' }}</div>
-                                                            <div class="text-[11px] font-semibold text-gray-400 dark:text-purple-300/60 uppercase">{{ $progress->user->school_origin ?? 'Origin Unknown' }}</div>
+                                                            <div class="font-bold text-black dark:text-white">{{ $progress->user->nama ?? 'Siswa Anonymous' }}</div>
+                                                            <div class="text-[11px] font-semibold text-gray-400 dark:text-purple-300/60 uppercase">{{ $progress->user->asal_sekolah ?? 'Origin Unknown' }}</div>
                                                         </div>
                                                     </div>
                                                 </td>
                                                 <td class="px-6 py-4 font-semibold text-gray-700 dark:text-gray-300">
-                                                    {{ Str::limit($progress->question->material->title_indo ?? 'Referenced Block Removed', 32) }}
+                                                    {{ Str::limit($progress->soal->materi->judul ?? 'Referenced Block Removed', 32) }}
                                                 </td>
                                                 <td class="px-6 py-4">
-                                                    @if($progress->is_correct)
+                                                    @if($progress->benar)
                                                     <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-[11px] uppercase font-black bg-neo-green text-black border-2 border-black shadow-neo-sm">
                                                         <i class="fa-solid fa-check"></i> Valid
                                                     </span>
@@ -341,7 +326,7 @@
                                                     @endif
                                                 </td>
                                                 <td class="px-6 py-4 text-xs text-gray-400 dark:text-purple-300/60 font-semibold font-mono">
-                                                    {{ $progress->created_at->diffForHumans() }}
+                                                    {{ $progress->dibuat_pada->diffForHumans() }}
                                                 </td>
                                             </tr>
                                             @empty
@@ -370,23 +355,13 @@
                             </h3>
                             <div class="grid grid-cols-2 gap-4">
                                 
-                                <a href="{{ route('materials.index') }}" class="qa-card bg-neo-yellow border-2 border-black rounded-2xl p-5 shadow-neo flex flex-col justify-between aspect-square group">
+                                <a href="{{ route('materi.index') }}" class="qa-card bg-neo-yellow border-2 border-black rounded-2xl p-5 shadow-neo flex flex-col justify-between aspect-square group">
                                     <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm group-hover:-rotate-12 transition-transform">
                                         <i class="fa-solid fa-plus text-black"></i>
                                     </div>
                                     <div>
                                         <p class="font-black text-black text-sm leading-tight uppercase">Inject Materi</p>
                                         <p class="text-[11px] font-bold text-black/60 mt-1">Buat modul data</p>
-                                    </div>
-                                </a>
-
-                                <a  href="{{ route('languages.index') }}" class="qa-card bg-p border-2 border-black rounded-2xl p-5 shadow-neo flex flex-col justify-between aspect-square text-left group">
-                                    <div class="w-10 h-10 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm group-hover:rotate-12 transition-transform">
-                                        <i class="fa-solid fa-language text-p"></i>
-                                    </div>
-                                    <div>
-                                        <p class="font-black text-white text-sm leading-tight uppercase">Add Bahasa</p>
-                                        <p class="text-[11px] font-bold text-white/70 mt-1">Register dialect</p>
                                     </div>
                                 </a>
 
@@ -413,16 +388,16 @@
                                 </span>
                             </div>
                             <div class="space-y-3">
-                                @forelse($activeLanguages ?? [['name'=>'Tolaki Konawe', 'code'=>'tk-1']] as $lang)
+                                @forelse($activeLanguages ?? [['nama'=>'Tolaki Konawe', 'kode'=>'tk-1']] as $lang)
                                 <div class="flex items-center justify-between bg-p-xlt dark:bg-p-dark/30 border-2 border-black dark:border-p-dark px-4 py-3 rounded-xl hover:-translate-x-1 transition-transform shadow-neo-sm">
                                     <div class="flex items-center gap-3">
                                         <div class="w-8 h-8 bg-black border-2 border-p-mid rounded-lg flex items-center justify-center shadow-neo-sm">
-                                            <i class="fa-solid fa-code text-white text-[10px]"></i>
+                                            <i class="fa-solid fa-kode text-white text-[10px]"></i>
                                         </div>
-                                        <span class="font-bold text-black dark:text-white text-sm">{{ is_array($lang) ? $lang['name'] : $lang->name }}</span>
+                                        <span class="font-bold text-black dark:text-white text-sm">{{ is_array($lang) ? $lang['nama'] : $lang->nama }}</span>
                                     </div>
                                     <span class="font-black text-[10px] text-p-dark dark:text-purple-200 bg-p-lt dark:bg-p-dark/50 px-2 py-1 rounded-md border-2 border-black dark:border-p-dark uppercase">
-                                        {{ is_array($lang) ? $lang['code'] : $lang->code }}
+                                        {{ is_array($lang) ? $lang['kode'] : $lang->kode }}
                                     </span>
                                 </div>
                                 @empty
@@ -439,69 +414,11 @@
         </div>
     </div>
 
-    <div id="modal-language" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
-        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-language')"></div>
 
-        <div id="modal-content-lang"
-             class="bg-white dark:bg-[#2d2460] w-11/12 md:max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 overflow-hidden transform transition-all scale-95 opacity-0">
-            
-            <div class="pt-6 pb-5 px-7 border-b-2 border-black dark:border-p-dark bg-p flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 bg-white border-2 border-black rounded-xl flex items-center justify-center shadow-neo-sm">
-                        <i class="fa-solid fa-language text-p text-sm"></i>
-                    </div>
-                    <h3 class="text-xl font-black text-white tracking-tight">Register Bahasa</h3>
-                </div>
-                <button onclick="toggleModal('modal-language')" aria-label="Close Modal"
-                    class="w-8 h-8 flex items-center justify-center bg-white border-2 border-black text-black rounded-full shadow-neo-sm hover:bg-neo-red transition-all">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-
-            <div class="px-7 py-7 bg-white dark:bg-[#2d2460]">
-                <form action="{{ route('languages.store') }}" method="POST">
-                    @csrf
-                    <div class="mb-5">
-                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Nama Dialek</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-language absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
-                            <input name="name" type="text" placeholder="Cth: Bahasa Bugis"
-                                   class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold text-black dark:text-white outline-none transition-all placeholder:text-gray-400 focus:border-p dark:focus:border-p-mid focus:shadow-neo-p"
-                                   required>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-7">
-                        <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">System Code</label>
-                        <div class="relative">
-                            <i class="fa-solid fa-code absolute left-4 top-1/2 -translate-y-1/2 text-p-mid text-sm pointer-events-none"></i>
-                            <input name="code" type="text" placeholder="Cth: bugis"
-                                   class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl py-3 pr-4 pl-11 text-sm font-bold font-mono lowercase tracking-wider text-black dark:text-white outline-none transition-all placeholder:text-gray-400 focus:border-p dark:focus:border-p-mid focus:shadow-neo-p"
-                                   required>
-                        </div>
-                        <p class="text-[11px] font-bold text-gray-500 dark:text-purple-300/50 mt-2 flex items-center gap-1">
-                            <i class="fa-solid fa-circle-exclamation text-p-mid"></i> Karakter alfabet kecil, tanpa spasi.
-                        </p>
-                    </div>
-
-                    <div class="flex justify-end gap-3 pt-5 border-t-2 border-p-lt dark:border-p-dark">
-                        <button type="button" onclick="toggleModal('modal-language')"
-                            class="px-5 py-2.5 bg-white dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-black dark:text-white text-sm font-black shadow-neo-sm hover:-translate-y-0.5 hover:shadow-neo transition-all">
-                            Abort
-                        </button>
-                        <button type="submit"
-                            class="px-5 py-2.5 bg-p border-2 border-black rounded-xl text-white text-sm font-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg hover:bg-p-dark transition-all">
-                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> Eksekusi
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Preloader Logic
-        window.addEventListener('load', () => {
+        window.addEventListener('DOMContentLoaded', () => {
             const pre = document.getElementById('preloader');
             pre.style.opacity = '0';
             setTimeout(() => { pre.style.visibility = 'hidden'; }, 500);
@@ -570,5 +487,31 @@
             }
         });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>
+

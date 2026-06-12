@@ -6,7 +6,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Models\AssetLibrary;
+use App\Models\PustakaAset;
 
 class ManifestGeneratorService
 {
@@ -92,9 +92,9 @@ class ManifestGeneratorService
             $lines[] = "[{$label}]";
 
             foreach ($items as $item) {
-                $tags    = implode(', ', $item['tags'] ?? []);
+                $tags    = implode(', ', $item['tag'] ?? []);
                 $tagStr  = $tags ? " (tags: {$tags})" : '';
-                $lines[] = "  - {$item['filename']}{$tagStr}";
+                $lines[] = "  - {$item['nama_file']}{$tagStr}";
             }
 
             $lines[] = '';
@@ -124,8 +124,8 @@ class ManifestGeneratorService
         ];
 
         // Ambil semua aset aktif dari database
-        $assets = AssetLibrary::where('is_active', true)
-            ->orderBy('created_at', 'desc')
+        $assets = PustakaAset::where('aktif', true)
+            ->orderBy('dibuat_pada', 'desc')
             ->get();
 
         $verifiedCount   = 0;
@@ -133,16 +133,16 @@ class ManifestGeneratorService
 
         foreach ($assets as $asset) {
             // Verifikasi file fisik ada di disk
-            $filePath = str_starts_with($asset->filename, 'assets/') 
-                        ? $asset->filename 
-                        : 'quiz-assets/' . $asset->filename;
+            $filePath = str_starts_with($asset->nama_file, 'assets/') 
+                        ? $asset->nama_file 
+                        : 'quiz-assets/' . $asset->nama_file;
 
             if (!Storage::disk('public')->exists($filePath)) {
                 // File ada di DB tapi tidak ada di disk
                 // Skip dan log untuk investigasi
                 $missingCount++;
                 Log::warning('[ManifestGenerator] File missing dari disk', [
-                    'filename' => $asset->filename,
+                    'nama_file' => $asset->nama_file,
                     'asset_id' => $asset->id,
                 ]);
                 continue;
@@ -151,20 +151,20 @@ class ManifestGeneratorService
             $verifiedCount++;
 
             // Normalisasi tags
-            $tags = $asset->tags ?? [];
+            $tags = $asset->tag ?? [];
             if (is_string($tags)) {
                 $tags = json_decode($tags, true) ?? [];
             }
 
             $item = [
-                'filename'    => $asset->filename,
-                'tags'        => array_values(array_filter($tags)),
-                'source'      => $asset->source_api ?? 'unknown',
-                'file_size'   => $asset->file_size ?? 0,
+                'nama_file' => $asset->nama_file,
+                'tag' => array_values(array_filter($tags)),
+                'source'      => $asset->sumber_api ?? 'unknown',
+                'file_size'   => $asset->ukuran_kb ?? 0,
             ];
 
             // Kategorikan berdasarkan asset_type
-            match($asset->asset_type) {
+            match($asset->tipe_aset) {
                 'image', 'photo', 'vector'
                     => $manifest['images'][] = $item,
                 'audio', 'sound'
@@ -204,7 +204,7 @@ class ManifestGeneratorService
 
         foreach ($manifest as $typeItems) {
             foreach ($typeItems as $item) {
-                if ($item['filename'] === $filename) {
+                if ($item['nama_file'] === $filename) {
                     return true;
                 }
             }
@@ -231,7 +231,7 @@ class ManifestGeneratorService
         // Buat flat set semua filename yang valid untuk O(1) lookup
         $validFilenames = collect($manifest)
             ->flatten(1)
-            ->pluck('filename')
+            ->pluck('nama_file')
             ->flip() // flip untuk O(1) isset() check
             ->toArray();
 

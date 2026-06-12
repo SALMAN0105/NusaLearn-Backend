@@ -11,8 +11,12 @@ class LoginController extends Controller
     // 1. Menampilkan Halaman Login
     public function showLoginForm()
     {
-        if (Auth::check() && Auth::user()->role === 'admin') {
-            return redirect()->route('admin.dashboard');
+        if (Auth::check()) {
+            if (Auth::user()->peran === 'administrator') {
+                return redirect()->route('administrator.dashboard');
+            } elseif (Auth::user()->peran === 'admin') {
+                return redirect()->route('admin.dashboard');
+            }
         }
         return view('auth.login');
     }
@@ -22,35 +26,73 @@ class LoginController extends Controller
     {
         // Validasi Input
         $credentials = $request->validate([
-            'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
+            'nama_pengguna' => ['required', 'string'],
+            'kata_sandi' => ['required', 'string'],
         ]);
 
+        $attemptCredentials = [
+            'nama_pengguna' => $credentials['nama_pengguna'],
+            'password' => $credentials['kata_sandi']
+        ];
+
         // Coba Login (Attempt)
-        if (Auth::attempt($credentials, $request->filled('remember'))) {
+        if (Auth::attempt($attemptCredentials, $request->filled('remember'))) {
             
             // Regenerasi Session ID (PENTING: Mencegah Session Fixation Attack)
             $request->session()->regenerate();
 
-            // Cek Role: Hanya Admin yang boleh masuk sini
-            if (Auth::user()->role !== 'admin') {
+            $user = Auth::user();
+
+            if (!$user->aktif) {
+                Auth::logout();
+                $request->session()->invalidate();
+                $request->session()->regenerateToken();
+                return back()->withErrors([
+                    'nama_pengguna' => 'Akun Anda telah dinonaktifkan oleh Administrator.',
+                ]);
+            }
+
+            if ($user->peran === 'administrator') {
+                // Administrator tidak butuh access code untuk login (asumsi)
+                return redirect()->route('administrator.dashboard');
+            } elseif ($user->peran === 'admin') {
+                // 'admin' role in db is actually 'guru' conceptually
+                // Cek apakah akun guru sudah diverifikasi (diberi access code)
+                if (empty($user->kode_akses)) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                    return back()->withErrors([
+                        'nama_pengguna' => 'Akun Guru Anda belum diverifikasi oleh Administrator.',
+                    ]);
+                }
+
+                // Cek apakah input access code sesuai secara aman (cegah timing attack)
+                if (!hash_equals((string) $user->kode_akses, (string) $request->input('kode_akses'))) {
+                    Auth::logout();
+                    $request->session()->invalidate();
+                    $request->session()->regenerateToken();
+                    return back()->withErrors([
+                        'nama_pengguna' => 'Kode Akses Guru salah.',
+                    ]);
+                }
+
+                return redirect()->intended('admin/dashboard');
+            } else {
                 Auth::logout();
                 $request->session()->invalidate();
                 $request->session()->regenerateToken();
 
                 return back()->withErrors([
-                    'username' => 'Akun Anda tidak memiliki akses administrator.',
+                    'nama_pengguna' => 'Akun Anda tidak memiliki akses ke panel ini.',
                 ]);
             }
-
-            // Jika sukses dan admin, arahkan ke dashboard
-            return redirect()->intended('admin/dashboard');
         }
 
         // Jika gagal login
         return back()->withErrors([
-            'username' => 'Username atau password salah.',
-        ])->onlyInput('username');
+            'nama_pengguna' => 'Username atau password salah.',
+        ])->onlyInput('nama_pengguna');
     }
 
     // 3. Proses Logout

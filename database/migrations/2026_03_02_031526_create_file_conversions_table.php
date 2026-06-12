@@ -8,20 +8,21 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('file_conversions', function (Blueprint $table) {
+        Schema::create('konversi_file', function (Blueprint $table) {
             $table->id();
-            $table->string('original_filename');
-            $table->string('conversion_type'); // 'kamus_excel' atau 'materi_pdf'
-            $table->string('json_output_path');
-            $table->integer('file_size_kb');
+            $table->string('nama_file_asli');
+            $table->string('tipe_konversi');
+            $table->string('jalur_output_json');
+            $table->integer('ukuran_file_kb');
             $table->enum('status', ['success', 'failed']);
-            $table->text('error_log')->nullable();
-            $table->timestamps();
+            $table->text('log_error')->nullable();
+            $table->timestamp('dibuat_pada')->nullable();
+            $table->timestamp('diperbarui_pada')->nullable();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('file_conversions');
+        Schema::dropIfExists('konversi_file');
     }
 };

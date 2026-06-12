@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login Administrator - NusaLearn</title>
+    <title>Login Guru - NusaLearn</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -303,7 +303,7 @@
             box-shadow: 0 0 0 4px #7C3AED1A, 3px 3px 0 var(--purple);
         }
 
-        /* Toggle password */
+        /* Toggle kata_sandi */
         .toggle-pw {
             position: absolute; right: 14px; top: 50%;
             transform: translateY(-50%);
@@ -466,15 +466,15 @@
             </div>
             <h1>Nusa<span>Learn</span></h1>
             <p>
-                Administrator Gateway
-                <span class="chip">ADMIN</span>
+                Guru Gateway
+                <span class="chip">GURU</span>
             </p>
         </div>
 
         <!-- Card -->
         <div class="card">
             <p class="card-heading">Selamat datang! 👋</p>
-            <p class="card-sub">Masuk untuk mengakses panel administrator.</p>
+            <p class="card-sub">Masuk untuk mengakses panel guru.</p>
 
             {{-- Alert Sukses --}}
             @if (session('success'))
@@ -499,25 +499,34 @@
                 @csrf
 
                 <!-- Username -->
-                <label class="field-label" for="username">Username Akses</label>
+                <label class="field-label" for="nama_pengguna">Username Akses</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-user-shield input-icon"></i>
-                    <input class="field-input" id="username" type="text"
-                           name="username" value="{{ old('username') }}"
-                           required autofocus placeholder="Masukkan username...">
+                    <input class="field-input" id="nama_pengguna" type="text"
+                           name="nama_pengguna" value="{{ old('nama_pengguna') }}"
+                           required autofocus placeholder="Masukkan nama_pengguna...">
                 </div>
 
                 <!-- Password -->
-                <label class="field-label" for="password">Kunci Keamanan</label>
+                <label class="field-label" for="kata_sandi">Kunci Keamanan</label>
                 <div class="input-wrap">
                     <i class="fa-solid fa-key input-icon"></i>
-                    <input class="field-input" id="password" type="password"
-                           name="password" required
+                    <input class="field-input" id="kata_sandi" type="password"
+                           name="kata_sandi" required
                            placeholder="••••••••" style="padding-right: 46px;">
                     <button type="button" class="toggle-pw"
-                            onclick="togglePassword('password', 'eye-icon')">
+                            onclick="togglePassword('kata_sandi', 'eye-icon')">
                         <i id="eye-icon" class="fa-regular fa-eye"></i>
                     </button>
+                </div>
+
+                <!-- Access Code -->
+                <label class="field-label" for="kode_akses">Kode Akses Guru (Kosongkan jika Administrator)</label>
+                <div class="input-wrap">
+                    <i class="fa-solid fa-shield-halved input-icon"></i>
+                    <input class="field-input" id="kode_akses" type="text"
+                           name="kode_akses"
+                           placeholder="Masukkan Kode Akses..." style="text-transform:uppercase">
                 </div>
 
                 <!-- Meta row -->
@@ -543,7 +552,7 @@
                 <div class="register-row">
                     <a href="{{ route('admin.register') }}" class="register-link">
                         <i class="fa-solid fa-user-plus"></i>
-                        Daftarkan Administrator Baru
+                        Daftarkan Guru Baru
                     </a>
                 </div>
 
@@ -558,7 +567,7 @@
     </div>
 
     <script>
-        // Toggle password visibility
+        // Toggle kata_sandi visibility
         function togglePassword(inputId, iconId) {
             const input = document.getElementById(inputId);
             const icon  = document.getElementById(iconId);
@@ -578,5 +587,30 @@
             setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
         });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>

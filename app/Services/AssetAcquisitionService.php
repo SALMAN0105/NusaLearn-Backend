@@ -6,7 +6,7 @@ namespace App\Services;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Models\AssetLibrary;
+use App\Models\PustakaAset;
 
 class AssetAcquisitionService
 {
@@ -76,16 +76,16 @@ class AssetAcquisitionService
         return array_map(fn($hit) => [
             'external_id'   => (string) $hit['id'],
             'source'        => 'pixabay',
-            'asset_type'    => 'image',
+            'tipe_aset' => 'image',
             'preview_url'   => $hit['previewURL']  ?? $hit['webformatURL'],
             'download_url'  => $hit['largeImageURL'] ?? $hit['webformatURL'],
-            'original_name' => "pixabay_{$hit['id']}.jpg",
-            'tags'          => array_map('trim', explode(',', $hit['tags'] ?? '')),
+            'nama_asli' => "pixabay_{$hit['id']}.jpg",
+            'tag' => array_map('trim', explode(',', $hit['tag'] ?? '')),
             'width'         => $hit['imageWidth']  ?? 0,
             'height'        => $hit['imageHeight'] ?? 0,
-            'attribution'   => [
+            'atribusi' => [
                 'author'     => $hit['user'] ?? 'Unknown',
-                'source_url' => $hit['pageURL'] ?? '',
+                'url_sumber' => $hit['pageURL'] ?? '',
                 'license'    => 'Pixabay License',
             ],
         ], $hits);
@@ -126,16 +126,16 @@ class AssetAcquisitionService
             return array_map(fn($video) => [
                 'external_id'   => (string) $video['id'],
                 'source'        => 'pexels',
-                'asset_type'    => 'video',
+                'tipe_aset' => 'video',
                 'preview_url'   => $video['image'] ?? '',
                 'download_url'  => $video['video_files'][0]['link'] ?? '',
-                'original_name' => "pexels_{$video['id']}.mp4",
-                'tags'          => [],
-                'attribution'   => [
+                'nama_asli' => "pexels_{$video['id']}.mp4",
+                'tag' => [],
+                'atribusi' => [
                     // WAJIB ditampilkan di UI sesuai syarat Pexels
-                    'author'      => $video['user']['name'] ?? 'Unknown',
+                    'author'      => $video['user']['nama'] ?? 'Unknown',
                     'author_url'  => $video['user']['url']  ?? '',
-                    'source_url'  => $video['url'] ?? '',
+                    'url_sumber' => $video['url'] ?? '',
                     'license'     => 'Pexels License — Wajib Atribusi',
                 ],
             ], $items);
@@ -145,16 +145,16 @@ class AssetAcquisitionService
         return array_map(fn($photo) => [
             'external_id'   => (string) $photo['id'],
             'source'        => 'pexels',
-            'asset_type'    => 'image',
+            'tipe_aset' => 'image',
             'preview_url'   => $photo['src']['medium']   ?? '',
             'download_url'  => $photo['src']['large2x']  ?? $photo['src']['large'],
-            'original_name' => "pexels_{$photo['id']}.jpg",
-            'tags'          => [],
-            'attribution'   => [
+            'nama_asli' => "pexels_{$photo['id']}.jpg",
+            'tag' => [],
+            'atribusi' => [
                 // WAJIB ditampilkan di UI sesuai syarat Pexels
                 'author'      => $photo['photographer']     ?? 'Unknown',
                 'author_url'  => $photo['photographer_url'] ?? '',
-                'source_url'  => $photo['url'] ?? '',
+                'url_sumber' => $photo['url'] ?? '',
                 'license'     => 'Pexels License — Wajib Atribusi',
             ],
         ], $photos);
@@ -189,15 +189,15 @@ class AssetAcquisitionService
         return array_map(fn($sound) => [
             'external_id'   => (string) $sound['id'],
             'source'        => 'freesound',
-            'asset_type'    => 'audio',
+            'tipe_aset' => 'audio',
                         'preview_url'   => $sound['previews']['preview-hq-mp3'] ?? $sound['previews']['preview-lq-mp3'] ?? '',
             'download_url'  => $sound['previews']['preview-hq-mp3'] ?? $sound['previews']['preview-lq-mp3'] ?? '',
-            'original_name' => "freesound_{$sound['id']}.mp3",
-            'tags'          => $sound['tags'] ?? [],
+            'nama_asli' => "freesound_{$sound['id']}.mp3",
+            'tag' => $sound['tag'] ?? [],
             'duration'      => $sound['duration'] ?? 0,
-            'attribution'   => [
-                'author'     => $sound['username'] ?? 'Unknown',
-                'source_url' => "https://freesound.org/s/{$sound['id']}/",
+            'atribusi' => [
+                'author'     => $sound['nama_pengguna'] ?? 'Unknown',
+                'url_sumber' => "https://freesound.org/s/{$sound['id']}/",
                 'license'    => $sound['license'] ?? 'Unknown',
             ],
         ], $results);
@@ -235,14 +235,14 @@ class AssetAcquisitionService
         return array_map(fn($item) => [
             'external_id'   => (string) ($item['id'] ?? ''),
             'source'        => 'freepik',
-            'asset_type'    => 'image',
+            'tipe_aset' => 'image',
             'preview_url'   => $item['image']['source']['url'] ?? '',
             'download_url'  => $item['image']['source']['url'] ?? '',
-            'original_name' => "freepik_{$item['id']}.jpg",
-            'tags'          => array_column($item['tags'] ?? [], 'name'),
-            'attribution'   => [
+            'nama_asli' => "freepik_{$item['id']}.jpg",
+            'tag' => array_column($item['tag'] ?? [], 'name'),
+            'atribusi' => [
                 'author'     => 'Freepik',
-                'source_url' => $item['url'] ?? '',
+                'url_sumber' => $item['url'] ?? '',
                 'license'    => 'Freepik License',
             ],
         ], $items);
@@ -280,14 +280,14 @@ class AssetAcquisitionService
             return [
                 'external_id'   => $iconName,
                 'source'        => 'iconify',
-                'asset_type'    => 'icon',
+                'tipe_aset' => 'icon',
                 'preview_url'   => $svgUrl,
                 'download_url'  => $svgUrl,
-                'original_name' => str_replace(':', '_', $iconName) . '.svg',
-                'tags'          => [$prefix, $name],
-                'attribution'   => [
+                'nama_asli' => str_replace(':', '_', $iconName) . '.svg',
+                'tag' => [$prefix, $name],
+                'atribusi' => [
                     'author'     => 'Iconify',
-                    'source_url' => "https://icon-sets.iconify.design/{$prefix}/{$name}/",
+                    'url_sumber' => "https://icon-sets.iconify.design/{$prefix}/{$name}/",
                     'license'    => 'Various Open Source Licenses',
                 ],
             ];
@@ -340,14 +340,14 @@ class AssetAcquisitionService
             return array_map(fn($edge) => [
                 'external_id'   => (string) ($edge['node']['id'] ?? ''),
                 'source'        => 'lottiefiles',
-                'asset_type'    => 'lottie',
+                'tipe_aset' => 'lottie',
                 'preview_url'   => $edge['node']['gifUrl']    ?? '',
                 'download_url'  => $edge['node']['lottieUrl'] ?? '',
-                'original_name' => "lottie_{$edge['node']['id']}.json",
-                'tags'          => [],
-                'attribution'   => [
-                    'author'     => $edge['node']['createdBy']['name'] ?? 'Unknown',
-                    'source_url' => "https://lottiefiles.com/animations/{$edge['node']['id']}",
+                'nama_asli' => "lottie_{$edge['node']['id']}.json",
+                'tag' => [],
+                'atribusi' => [
+                    'author'     => $edge['node']['createdBy']['nama'] ?? 'Unknown',
+                    'url_sumber' => "https://lottiefiles.com/animations/{$edge['node']['id']}",
                     'license'    => 'LottieFiles Free License',
                 ],
             ], $edges);
@@ -400,14 +400,14 @@ class AssetAcquisitionService
             return [
                 'external_id'   => $extId,
                 'source'        => 'google',
-                'asset_type'    => 'image',
+                'tipe_aset' => 'image',
                 'preview_url'   => $item['image']['thumbnailLink'] ?? $item['link'],
                 'download_url'  => $item['link'] ?? '',
-                'original_name' => "google_{$extId}.jpg",
-                'tags'          => [],
-                'attribution'   => [
+                'nama_asli' => "google_{$extId}.jpg",
+                'tag' => [],
+                'atribusi' => [
                     'author'      => $item['displayLink'] ?? 'Google Images',
-                    'source_url'  => $item['image']['contextLink'] ?? '',
+                    'url_sumber' => $item['image']['contextLink'] ?? '',
                     'license'     => 'Fair Use (Educational) / Subject to Source Copyright',
                 ],
             ];
@@ -433,7 +433,7 @@ public function fetchAndStore(
         array   $tags         = [],
         ?string $externalId   = null,
         ?string $originalName = null,
-    ): AssetLibrary {
+    ): PustakaAset {
         // ── KUNCI THREAD (ATOMIC LOCK) ─────────────────────────────────
         // Big-O: O(1) Lock mechanism untuk mencegah duplicate parallel downloads
         $lockKey = 'downloading_asset_' . md5($url);
@@ -475,25 +475,25 @@ public function fetchAndStore(
                     $mimeType = explode(';', $response->header('Content-Type') ?? $this->guessMimeType($filename))[0];
 
                     // Terapkan firstOrCreate untuk atomic level DB
-                    return AssetLibrary::firstOrCreate(
-                        ['filename' => $filename],
+                    return PustakaAset::firstOrCreate(
+                        ['nama_file' => $filename],
                         [
-                            'original_name' => $originalName ?? basename(parse_url($url, PHP_URL_PATH)),
-                            'extension'     => $extension,
-                            'asset_type'    => $assetType,
-                            'mime_type'     => trim($mimeType),
-                            'size_kb'       => round(strlen($fileContent) / 1024),
-                            'source_api'    => $source,
+                            'nama_asli'     => $originalName ?? basename(parse_url($url, PHP_URL_PATH)),
+                            'ekstensi'      => $extension,
+                            'tipe_aset'     => $assetType,
+                            'tipe_mime'     => trim($mimeType),
+                            'ukuran_kb'     => round(strlen($fileContent) / 1024),
+                            'sumber_api'    => $source,
                             'external_id'   => $externalId,
-                            'tags'          => array_values(array_filter($tags)),
-                            'is_active'     => true,
+                            'tag'           => array_values(array_filter($tags)),
+                            'aktif'         => true,
                         ]
                     );
                 } catch (\Illuminate\Database\QueryException $e) {
                     // Catch SQLSTATE[23000]: Integrity constraint violation: 1062 Duplicate entry
                     if ($e->getCode() == '23000') {
-                        Log::info('[AssetAcquisition] Race condition mitigated (DB Constraint Hit)', ['filename' => $filename]);
-                        return AssetLibrary::where('filename', $filename)->firstOrFail();
+                        Log::info('[AssetAcquisition] Race condition mitigated (DB Constraint Hit)', ['nama_file' => $filename]);
+                        return PustakaAset::where('nama_file', $filename)->firstOrFail();
                     }
                     throw $e;
                 }
@@ -509,7 +509,7 @@ public function fetchAndStore(
      * Fetch banyak aset sekaligus (digunakan oleh QuizGeneratorService
      * saat auto-fetch aset untuk soal yang baru di-generate).
      *
-     * @param array $items Format: [['url'=>'...','source'=>'...','type'=>'...','tags'=>[...]], ...]
+     * @param array $items Format: [['url'=>'...','source'=>'...','type'=>'...','tag' =>[...]], ...]
      * @return array Format: ['success'=>[AssetLibrary], 'failed'=>[['url'=>'...','error'=>'...']]]
      */
     public function bulkFetch(array $items): array
@@ -522,10 +522,10 @@ public function fetchAndStore(
                 $asset = $this->fetchAndStore(
                     url:          $item['url'],
                     source:       $item['source']       ?? 'unknown',
-                    assetType:    $item['asset_type']   ?? 'image',
-                    tags:         $item['tags']         ?? [],
+                    assetType:    $item['tipe_aset']   ?? 'image',
+                    tags:         $item['tag']         ?? [],
                     externalId:   $item['external_id']  ?? null,
-                    originalName: $item['original_name'] ?? null,
+                    originalName: $item['nama_asli'] ?? null,
                 );
                 $success[] = $asset;
 

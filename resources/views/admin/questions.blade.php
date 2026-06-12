@@ -160,7 +160,7 @@
                     <span>Dashboard</span>
                 </a>
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
-                <a href="{{ route('materials.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('materi.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-book-open w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Materi Belajar</span>
                 </a>
@@ -172,27 +172,19 @@
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
-                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Bahasa Daerah</span>
-                </a>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Data Akademik</p>
                 <a href="{{ route('students.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-users w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Wilayah</span>
-                </a>
-            </nav>
+                </nav>
 
             <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama ?? 'Guru' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                     <form action="{{ route('logout') }}" method="POST">
@@ -219,11 +211,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
-                    @if(session('success'))
-                        <div class="hidden sm:flex bg-neo-green border-2 border-black text-black px-4 py-2 rounded-xl items-center gap-2 shadow-neo-sm text-sm font-bold fade-in">
-                            <i class="fa-solid fa-circle-check"></i> <span>{{ session('success') }}</span>
-                        </div>
-                    @endif
+                    
                     <button id="theme-toggle" class="w-10 h-10 flex items-center justify-center bg-p-lt dark:bg-p-dark/40 border-2 border-black dark:border-p-dark text-p dark:text-purple-300 rounded-xl shadow-neo-sm hover:bg-p hover:text-white dark:hover:bg-p transition-all">
                         <i id="theme-toggle-icon" class="fa-solid fa-moon text-base"></i>
                     </button>
@@ -240,18 +228,18 @@
                             <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari pertanyaan..."
                                    class="w-full pl-11 pr-4 py-3 bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all placeholder:text-gray-400">
                         </div>
-                        <select name="material_id" onchange="this.form.submit()"
+                        <select name="materi_id" onchange="this.form.submit()"
                                 class="w-full sm:w-auto border-2 border-black dark:border-p-dark bg-p-xlt dark:bg-[#1e1b4b] rounded-xl py-3 px-4 text-sm text-black dark:text-white font-bold outline-none cursor-pointer appearance-none">
                             <option value="all">Semua Materi</option>
                             @foreach($materials as $mat)
-                                <option value="{{ $mat->id }}" {{ request('material_id') == $mat->id ? 'selected' : '' }}>{{ Str::limit($mat->title_indo, 30) }}</option>
+                                <option value="{{ $mat->id }}" {{ request('materi_id') == $mat->id ? 'selected' : '' }}>{{ Str::limit($mat->judul, 30) }}</option>
                             @endforeach
                         </select>
-                        <select name="template_type" onchange="this.form.submit()"
+                        <select name="tipe_template" onchange="this.form.submit()"
                                 class="w-full sm:w-auto border-2 border-black dark:border-p-dark bg-p-xlt dark:bg-[#1e1b4b] rounded-xl py-3 px-4 text-sm text-black dark:text-white font-bold outline-none cursor-pointer appearance-none">
                             <option value="">Semua Template</option>
-                            @foreach(\App\Models\Question::ALL_TEMPLATES as $key => $label)
-                                <option value="{{ $key }}" {{ request('template_type') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                            @foreach(\App\Models\Soal::ALL_TEMPLATES as $key => $label)
+                                <option value="{{ $key }}" {{ request('tipe_template') == $key ? 'selected' : '' }}>{{ $label }}</option>
                             @endforeach
                         </select>
                     </form>
@@ -259,9 +247,9 @@
                         <button onclick="toggleModal('modal-add')" class="flex-1 xl:flex-none bg-neo-cyan hover:bg-cyan-300 text-black px-5 py-3 rounded-xl border-2 border-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg transition-all text-sm font-black flex items-center justify-center gap-2">
                             <i class="fa-solid fa-pen-nib"></i> Manual
                         </button>
-                        <button onclick="toggleModal('modal-ai-generate')" class="flex-1 xl:flex-none bg-p hover:bg-p-dark text-white px-5 py-3 rounded-xl border-2 border-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg transition-all text-sm font-black flex items-center justify-center gap-2">
+                        {{-- <button onclick="toggleModal('modal-ai-generate')" class="flex-1 xl:flex-none bg-p hover:bg-p-dark text-white px-5 py-3 rounded-xl border-2 border-black shadow-neo hover:-translate-y-0.5 hover:shadow-neo-lg transition-all text-sm font-black flex items-center justify-center gap-2">
                             <i class="fa-solid fa-wand-magic-sparkles"></i> AI Generate
-                        </button>
+                        </button> --}}
                     </div>
                 </div>
 
@@ -283,18 +271,18 @@
                                 @forelse($questions as $q)
                                 <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
                                     <td class="px-6 py-5 max-w-xs whitespace-normal">
-                                        <div class="font-bold text-black dark:text-white line-clamp-2 leading-relaxed">{{ $q->question_text_indo }}</div>
+                                        <div class="font-bold text-black dark:text-white line-clamp-2 leading-relaxed">{{ $q->teks_soal }}</div>
                                         <div class="text-[10px] font-bold text-gray-500 dark:text-purple-300/60 mt-1 flex items-center gap-1.5">
                                             <i class="fa-solid fa-microchip text-p-mid"></i> Auto-translate Engine
                                         </div>
                                     </td>
                                     <td class="px-6 py-5">
                                         <div class="inline-flex items-center gap-2 bg-p-xlt dark:bg-p-dark/50 text-black dark:text-white px-3 py-1.5 rounded-lg text-xs font-bold border-2 border-black dark:border-p-dark shadow-neo-sm">
-                                            <i class="fa-solid fa-link text-p-mid"></i> {{ Str::limit($q->material->title_indo ?? 'Null', 22) }}
+                                            <i class="fa-solid fa-link text-p-mid"></i> {{ Str::limit($q->materi->judul ?? 'Null', 22) }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-5 text-center">
-                                        @php $ttype = $q->template_type ?? 'multiple_choice'; @endphp
+                                        @php $ttype = $q->tipe_template ?? 'multiple_choice'; @endphp
                                         <span class="badge-{{ $ttype }} inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-black border-2 border-black shadow-neo-sm uppercase tracking-wide">
                                             @switch($ttype)
                                                 @case('drag_and_drop') <i class="fa-solid fa-hand-pointer"></i> @break
@@ -309,12 +297,12 @@
                                     <td class="px-6 py-5 text-center">
                                         <div class="flex justify-center text-neo-yellow dark:text-yellow-400 text-sm gap-0.5">
                                             @for($i=1; $i<=5; $i++)
-                                                <i class="fa-{{ $i <= $q->difficulty_weight ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
+                                                <i class="fa-{{ $i <= $q->bobot_kesulitan ? 'solid' : 'regular text-gray-300 dark:text-gray-600' }} fa-star"></i>
                                             @endfor
                                         </div>
                                     </td>
                                     <td class="px-6 py-5 text-center">
-                                        @php $assetCount = count($q->assets_required ?? []); @endphp
+                                        @php $assetCount = count($q->aset_diperlukan ?? []); @endphp
                                         @if($assetCount > 0)
                                             @php $missing = $q->getMissingAssets(); @endphp
                                             <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-black border-2 border-black shadow-neo-sm {{ empty($missing) ? 'bg-neo-green' : 'bg-neo-red' }}">
@@ -327,15 +315,15 @@
                                     </td>
                                     <td class="px-6 py-5 text-right">
                                         <div class="flex items-center justify-end gap-2">
-                                            <button onclick="previewQuestionData({{ json_encode($q->question_data ?? ['info' => 'Legacy format (no question_data)']) }})"
+                                            <button onclick="previewQuestionData({{ json_encode($q->data_soal ?? ['info' => 'Legacy format (no data_soal)']) }})"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-p-lt border-2 border-black text-p hover:bg-p hover:text-white transition-all shadow-neo-sm" title="Preview JSON">
                                                 <i class="fa-solid fa-code text-sm"></i>
                                             </button>
-                                            <button onclick="editQuestion({{ $q->id }}, '{{ $q->template_type ?? 'multiple_choice' }}', {{ json_encode($q->question_data ?? ['question_text_indo' => $q->question_text_indo, 'options' => $q->options_json]) }}, {{ $q->material_id }}, {{ $q->difficulty_weight }})"
+                                            <button onclick="editQuestion({{ $q->id }}, '{{ $q->tipe_template ?? 'multiple_choice' }}', {{ json_encode($q->data_soal ?? ['teks_soal' => $q->teks_soal, 'options' => $q->opsi_json]) }}, {{ $q->materi_id }}, {{ $q->bobot_kesulitan }}, {{ $q->kelas }})"
                                                     class="w-8 h-8 rounded-lg flex items-center justify-center bg-neo-yellow border-2 border-black text-black hover:bg-yellow-400 transition-all shadow-neo-sm" title="Edit Soal">
                                                 <i class="fa-solid fa-pen-to-square text-sm"></i>
                                             </button>
-                                            <form id="delete-form-{{ $q->id }}" action="{{ route('questions.destroy', $q->id) }}" method="POST" class="inline">
+                                            <form id="delete-form-{{ $q->id }}" action="{{ route('soal.destroy', $q->id) }}" method="POST" class="inline">
                                                 @csrf @method('DELETE')
                                                 <button type="button" onclick="confirmDelete('{{ $q->id }}')" class="w-8 h-8 rounded-lg flex items-center justify-center bg-white border-2 border-black text-black hover:bg-neo-red transition-all shadow-neo-sm">
                                                     <i class="fa-solid fa-trash-can text-sm"></i>
@@ -393,10 +381,9 @@
                 </button>
             </div>
 
-            {{-- FIX #2: Scrollable body — tombol simpan ada di dalam form yang scrollable --}}
+
             <div class="modal-scroll-body px-8 py-8 bg-white dark:bg-[#2d2460] space-y-6">
 
-                {{-- STEP 1: Pilih Template --}}
                 <div id="manual-step-pick">
                     <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-3">Pilih Tipe Template</label>
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -430,33 +417,45 @@
                           enctype="multipart/form-data"
                           class="space-y-6">
                         @csrf
-                        <input type="hidden" name="template_type" id="manual-tpl-type">
+                        <input type="hidden" name="tipe_template" id="manual-tpl-type">
 
                         {{-- Info umum --}}
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                             <div>
                                 <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Materi Induk <span class="text-red-500">*</span></label>
-                                <select name="material_id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
+                                <select name="materi_id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
                                     <option value="">-- Pilih Materi --</option>
                                     @foreach($materials as $mat)
-                                        <option value="{{ $mat->id }}">{{ $mat->title_indo }}</option>
+                                        <option value="{{ $mat->id }}">{{ $mat->judul }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Bobot Kesulitan</label>
-                                <select name="difficulty_weight" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
+                                <select name="bobot_kesulitan" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
                                     @for($i=1; $i<=5; $i++)
                                         <option value="{{ $i }}" {{ $i==3 ? 'selected':'' }}>Level {{ $i }}</option>
                                     @endfor
                                 </select>
                             </div>
+                          <div>
+                              <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kelas</label>
+                              <select name="kelas" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
+                                  <option value="1">Kelas 1</option>
+                                  <option value="2">Kelas 2</option>
+                                  <option value="3">Kelas 3</option>
+                                  
+                                  
+                                  
+                              </select>
+                          </div>
+
                         </div>
 
-                        {{-- FIX #4: question_text_indo selalu ada di semua template --}}
+                        {{-- FIX #4: teks_soal selalu ada di semua template --}}
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Teks Pertanyaan <span class="text-red-500">*</span></label>
-                            <textarea name="question_text_indo" id="main-question-text" rows="2"
+                            <textarea name="teks_soal" id="main-question-text" rows="2"
                                       class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y"
                                       placeholder="Tulis pertanyaan utama..." required></textarea>
                         </div>
@@ -561,9 +560,9 @@
                             <div class="p-4 border-2 border-dashed border-black dark:border-p-dark rounded-xl bg-neo-yellow/30">
                                 <p class="text-xs font-black text-black dark:text-white uppercase tracking-widest mb-1">Kalimat dengan Blank</p>
                                 <p class="text-[11px] text-gray-500 dark:text-gray-400 mb-3">
-                                    Gunakan <code class="bg-white dark:bg-[#1e1b4b] px-1 py-0.5 rounded border border-gray-200">___</code> (3 garis bawah) sebagai penanda kosong.
+                                    Gunakan <kode class="bg-white dark:bg-[#1e1b4b] px-1 py-0.5 rounded border border-gray-200">___</kode> (3 garis bawah) sebagai penanda kosong.
                                 </p>
-                                {{-- FIX #5: fill_sentence punya name="fill_sentence" TERPISAH dari question_text_indo --}}
+                                {{-- FIX #5: fill_sentence punya name="fill_sentence" TERPISAH dari teks_soal --}}
                                 <textarea name="fill_sentence" id="fill-sentence-input" rows="2"
                                           placeholder="Tulis kalimat dengan ___ sebagai penanda blank... Contoh: Rumah adat Tolaki disebut ___"
                                           onchange="parseFillBlanks()" oninput="parseFillBlanks()"
@@ -713,7 +712,7 @@
                             <select id="ai-material-id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
                                 <option value="">-- Pilih Materi --</option>
                                 @foreach($materials as $mat)
-                                    <option value="{{ $mat->id }}">{{ $mat->title_indo }}</option>
+                                    <option value="{{ $mat->id }}">{{ $mat->judul }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -769,12 +768,13 @@
                         </div>
                     </div>
 
-                    <form action="{{ route('questions.store') }}" method="POST" id="confirm-save-form" class="space-y-4">
+                    <form action="{{ route('soal.store') }}" method="POST" id="confirm-save-form" class="space-y-4">
                         @csrf
-                        <input type="hidden" name="template_type"      id="hidden-template-type">
-                        <input type="hidden" name="material_id"        id="hidden-material-id">
-                        <input type="hidden" name="difficulty_weight"  id="hidden-difficulty">
-                        <input type="hidden" name="question_text_indo" id="hidden-question-text">
+                        <input type="hidden" name="tipe_template"      id="hidden-template-type">
+                        <input type="hidden" name="materi_id"        id="hidden-material-id">
+                        <input type="hidden" name="bobot_kesulitan"  id="hidden-difficulty">
+                          <input type="hidden" name="kelas" id="hidden-kelas">
+                        <input type="hidden" name="teks_soal" id="hidden-question-text">
                         <input type="hidden" name="question_data_json" id="hidden-question-data">
 
                         <div id="force-save-container" class="hidden flex items-center gap-3 p-3 bg-neo-red border-2 border-black rounded-xl">
@@ -823,28 +823,40 @@
             <div class="modal-scroll-body px-8 py-8 bg-white dark:bg-[#2d2460] space-y-6">
                 <form id="edit-quiz-form" action="" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf @method('PUT')
-                    <input type="hidden" name="template_type" id="edit-tpl-type">
+                    <input type="hidden" name="tipe_template" id="edit-tpl-type">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Materi Induk</label>
-                            <select name="material_id" id="edit-material-id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
+                            <select name="materi_id" id="edit-material-id" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
                                 @foreach($materials as $mat)
-                                    <option value="{{ $mat->id }}">{{ $mat->title_indo }}</option>
+                                    <option value="{{ $mat->id }}">{{ $mat->judul }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div>
                             <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Bobot Kesulitan</label>
-                            <select name="difficulty_weight" id="edit-difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
+                            <select name="bobot_kesulitan" id="edit-difficulty" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none">
                                 @for($i=1; $i<=5; $i++)
                                     <option value="{{ $i }}">Level {{ $i }}</option>
                                 @endfor
                             </select>
                         </div>
+                          <div>
+                              <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Kelas</label>
+                              <select id="edit-kelas" name="kelas" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all cursor-pointer appearance-none" required>
+                                  <option value="1">Kelas 1</option>
+                                  <option value="2">Kelas 2</option>
+                                  <option value="3">Kelas 3</option>
+                                  
+                                  
+                                  
+                              </select>
+                          </div>
+
                     </div>
                     <div>
                         <label class="block text-xs font-black text-black dark:text-white uppercase tracking-widest mb-2">Teks Pertanyaan <span class="text-red-500">*</span></label>
-                        <textarea name="question_text_indo" id="edit-main-question-text" rows="2" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y" required></textarea>
+                        <textarea name="teks_soal" id="edit-main-question-text" rows="2" class="w-full bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl px-4 py-3 text-sm font-bold text-black dark:text-white outline-none focus:border-p transition-all resize-y" required></textarea>
                     </div>
 
                     {{-- Section templates (Multiple choice, etc) --}}
@@ -943,6 +955,25 @@
     {{-- ═══════════════════════════════════════════════════════════════════ --}}
     {{-- MODAL E: KONFIRMASI HAPUS (CUSTOM THEME)                             --}}
     {{-- ═══════════════════════════════════════════════════════════════════ --}}
+    <!-- Modal Preview JSON -->
+    <div id="modal-json-view" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]" aria-hidden="true">
+        <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-json-view')"></div>
+        <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-2xl mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-50 transform transition-all scale-95 opacity-0 flex flex-col max-h-[85vh]">
+            <div class="flex items-center justify-between p-6 border-b-2 border-p-lt dark:border-p-dark">
+                <div>
+                    <h3 class="text-xl font-black text-black dark:text-white uppercase tracking-tight">Preview Data Soal (JSON)</h3>
+                    <p class="text-xs font-bold text-gray-500 dark:text-purple-300 mt-1">Struktur mentah dari soal ini.</p>
+                </div>
+                <button onclick="toggleModal('modal-json-view')" class="w-10 h-10 flex items-center justify-center bg-neo-red border-2 border-black rounded-full text-black hover:-translate-y-1 hover:shadow-neo transition-all">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1 bg-gray-50 dark:bg-gray-900 rounded-b-3xl">
+                <pre id="json-view-content" class="text-xs font-mono text-gray-800 dark:text-green-400 whitespace-pre-wrap break-all"></pre>
+            </div>
+        </div>
+    </div>
+
     <div id="modal-delete" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[110]" aria-hidden="true">
         <div class="absolute w-full h-full bg-black/60 backdrop-blur-sm" onclick="toggleModal('modal-delete')"></div>
         <div class="modal-container bg-white dark:bg-[#2d2460] w-11/12 md:max-w-md mx-auto rounded-3xl border-2 border-black dark:border-p-dark shadow-neo-lg z-[120] transform transition-all scale-95 opacity-0">
@@ -978,7 +1009,7 @@
     {{-- ═══════════════════════════════════════════════════════════════════ --}}
     <script>
     // ── Preloader ──────────────────────────────────────────────────────────
-    window.addEventListener('load', () => {
+    window.addEventListener('DOMContentLoaded', () => {
         const pre = document.getElementById('preloader');
         pre.style.opacity = '0';
         setTimeout(() => { pre.style.visibility = 'hidden'; }, 500);
@@ -1331,7 +1362,7 @@
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept':       'application/json',
                 },
-                body: JSON.stringify({ material_id: materialId, template_type: selectedTemplate, difficulty }),
+                body: JSON.stringify({ materi_id: materialId, tipe_template: selectedTemplate, difficulty }),
             });
 
             const data = await res.json();
@@ -1364,7 +1395,7 @@
 
         document.getElementById('ai-modal-step-label').textContent = 'Langkah 2 dari 2: Preview & Konfirmasi';
         document.getElementById('preview-template-label').textContent = templateLabels[selectedTemplate] || selectedTemplate;
-        document.getElementById('preview-assets-count').textContent   = data.assets_required.length + ' file';
+        document.getElementById('preview-assets-count').textContent   = data.aset_diperlukan.length + ' file';
 
         if (data.missing_assets && data.missing_assets.length > 0) {
             document.getElementById('missing-assets-list').textContent = 'File hilang: ' + data.missing_assets.join(', ');
@@ -1375,13 +1406,13 @@
             document.getElementById('force-save-container').classList.add('hidden');
         }
 
-        document.getElementById('json-preview-content').textContent = JSON.stringify(data.question_data, null, 2);
+        document.getElementById('json-preview-content').textContent = JSON.stringify(data.data_soal, null, 2);
 
-        const qd = data.question_data;
+        const qd = data.data_soal;
         document.getElementById('hidden-template-type').value  = selectedTemplate;
         document.getElementById('hidden-material-id').value    = materialId;
         document.getElementById('hidden-difficulty').value     = difficulty;
-        document.getElementById('hidden-question-text').value  = qd.question_text_indo || '';
+        document.getElementById('hidden-question-text').value  = qd.teks_soal || '';
         document.getElementById('hidden-question-data').value  = JSON.stringify(qd);
 
         document.getElementById('ai-step-1').classList.add('hidden');
@@ -1395,7 +1426,7 @@
 
     function copyJson() {
         const text = document.getElementById('json-preview-content').textContent;
-        navigator.clipboard.writeText(text).then(() => alert('JSON disalin!'));
+        navigator.clipboard.writeText(text).then(() => showCustomAlert('JSON disalin!'));
     }
 
     // ── Read-only preview dari tabel ────────────────────────────────────
@@ -1442,15 +1473,16 @@
         }
     }
     // ── Edit Question Logic ──────────────────────────────────────────────
-    function editQuestion(id, templateType, data, materialId, difficultyWeight) {
+    function editQuestion(id, templateType, data, materialId, difficultyWeight, kelasId) {
+        if(document.getElementById('edit-kelas')) document.getElementById('edit-kelas').value = kelasId;
         const modal = document.getElementById('modal-edit');
         const form = document.getElementById('edit-quiz-form');
-        form.action = `/admin/questions/${id}`;
+        form.action = `{{ url('admin/soal') }}/${id}`;
         
         document.getElementById('edit-tpl-type').value = templateType;
         document.getElementById('edit-material-id').value = materialId;
         document.getElementById('edit-difficulty').value = difficultyWeight;
-        document.getElementById('edit-main-question-text').value = data.question_text_indo || data.question_text || '';
+        document.getElementById('edit-main-question-text').value = data.teks_soal || data.question_text || '';
         document.getElementById('edit-explanation-text').value = data.explanation || '';
         
         const labels = {
@@ -1481,7 +1513,7 @@
                 const input = document.getElementById('edit-opt-' + i);
                 const radio = document.getElementById('edit-correct-' + i);
                 if (input) input.value = opt.text || '';
-                if (radio) radio.checked = opt.is_correct || (data.correct_answer_key === opt.id);
+                if (radio) radio.checked = opt.benar || (data.kunci_jawaban === opt.id);
             });
         } else if (templateType === 'drag_and_drop') {
             const items = data.items || [];
@@ -1512,7 +1544,7 @@
                 container.appendChild(div);
             });
         } else if (templateType === 'fill_blank') {
-            document.getElementById('edit-fill-sentence-input').value = data.question_text_indo || data.question_text || '';
+            document.getElementById('edit-fill-sentence-input').value = data.teks_soal || data.question_text || '';
             parseEditFillBlanks(data.correct_answers || []);
             document.getElementById('edit-wb-hidden').value = JSON.stringify(data.word_bank || []);
         } else if (templateType === 'image_quiz') {
@@ -1526,7 +1558,7 @@
                 const input = document.getElementById('edit-imgq-opt-' + i);
                 const radio = document.getElementById('edit-imgq-correct-' + i);
                 if (input) input.value = opt.text || '';
-                if (radio) radio.checked = opt.is_correct || (data.correct_answer_key === opt.id);
+                if (radio) radio.checked = opt.benar || (data.kunci_jawaban === opt.id);
             });
         }
 
@@ -1613,5 +1645,33 @@
         }
     });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>
+
+
+

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Language;
+use App\Models\Bahasa;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 
@@ -11,8 +11,8 @@ class LanguageController extends Controller
 {
     public function index()
     {
-        $languages = Language::latest()->get();
-        return view('admin.languages', compact('languages'));
+        $languages = Bahasa::latest()->paginate(5);
+        return view('administrator.languages', compact('languages'));
     }
 
     /**
@@ -21,14 +21,14 @@ class LanguageController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:50',
-            'code' => 'required|string|max:20|unique:languages,code',
+            'nama' => 'required|string|max:50',
+            'kode' => 'required|string|max:20|unique:bahasa,kode',
             'dataset' => 'required|file|mimes:json,txt|max:5120', // Max 5MB
         ]);
 
         try {
             $file = $request->file('dataset');
-            $code = strtolower($validated['code']);
+            $code = strtolower($validated['kode']);
 
             // 1️⃣ BACA & DECODE JSON
             $jsonContent = file_get_contents($file->getRealPath());
@@ -50,15 +50,15 @@ class LanguageController extends Controller
             );
 
             // 4️⃣ SIMPAN KE DATABASE
-            Language::create([
-                'name' => $validated['name'],
-                'code' => $code,
-                'json_file' => $fileName,
-                'version_hash' => md5(json_encode($convertedData)), // Hash untuk detect perubahan
-                'is_active' => true,
+            Bahasa::create([
+                'nama' => $validated['nama'],
+                'kode' => $code,
+                'file_json' => $fileName,
+                'hash_versi' => md5(json_encode($convertedData)), // Hash untuk detect perubahan
+                'aktif' => true,
             ]);
 
-            return back()->with('success', "Bahasa {$validated['name']} berhasil ditambahkan! (Total: " . count($convertedData) . " kata)");
+            return back()->with('success', "Bahasa {$validated['nama']} berhasil ditambahkan! (Total: " . count($convertedData) . " kata)");
 
         } catch (\Exception $e) {
             return back()->withErrors(['dataset' => 'Error: ' . $e->getMessage()]);
@@ -68,16 +68,16 @@ class LanguageController extends Controller
     /**
  * ✏️ UPDATE: Edit nama, kode, dan/atau ganti dataset
  */
-public function update(Request $request, Language $language)
+public function update(Request $request, Bahasa $bahasa)
 {
     $validated = $request->validate([
-        'name'    => 'required|string|max:50',
-        'code'    => 'required|string|max:20|unique:languages,code,' . $language->id,
+        'nama' => 'required|string|max:50',
+        'kode' => 'required|string|max:20|unique:bahasa,kode,' . $bahasa->id,
         'dataset' => 'nullable|file|mimes:json,txt|max:5120',
     ]);
 
     try {
-        $code = strtolower($validated['code']);
+        $code = strtolower($validated['kode']);
 
         // Jika ada file dataset baru, proses dan ganti yang lama
         if ($request->hasFile('dataset')) {
@@ -92,8 +92,8 @@ public function update(Request $request, Language $language)
             $convertedData = $this->convertToFlatFormat($decoded);
 
             // Hapus file lama jika ada
-            if ($language->json_file && Storage::disk('public')->exists($language->json_file)) {
-                Storage::disk('public')->delete($language->json_file);
+            if ($bahasa->file_json && Storage::disk('public')->exists($bahasa->file_json)) {
+                Storage::disk('public')->delete($bahasa->file_json);
             }
 
             $fileName = "dictionaries/kamus_{$code}.json";
@@ -102,15 +102,15 @@ public function update(Request $request, Language $language)
                 json_encode($convertedData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
             );
 
-            $language->json_file     = $fileName;
-            $language->version_hash  = md5(json_encode($convertedData));
+            $bahasa->file_json     = $fileName;
+            $bahasa->hash_versi  = md5(json_encode($convertedData));
         }
 
-        $language->name = $validated['name'];
-        $language->code = $code;
-        $language->save();
+        $bahasa->nama = $validated['nama'];
+        $bahasa->kode = $code;
+        $bahasa->save();
 
-        return back()->with('success', "Bahasa {$validated['name']} berhasil diperbarui!");
+        return back()->with('success', "Bahasa {$validated['nama']} berhasil diperbarui!");
 
     } catch (\Exception $e) {
         return back()->withErrors(['dataset' => 'Error: ' . $e->getMessage()]);
@@ -163,13 +163,12 @@ public function update(Request $request, Language $language)
     /**
      * 🗑️ DELETE: Hapus file juga
      */
-    public function destroy(Language $language)
+    public function destroy(Bahasa $bahasa)
     {
-        if ($language->json_file && Storage::disk('public')->exists($language->json_file)) {
-            Storage::disk('public')->delete($language->json_file);
+        if ($bahasa->file_json && Storage::disk('public')->exists($bahasa->file_json)) {
+            Storage::disk('public')->delete($bahasa->file_json);
         }
-
-        $language->delete();
-        return back()->with('success', 'Bahasa berhasil dihapus.');
+        $bahasa->delete();
+        return back()->with('success', 'Node bahasa berhasil dihapus!');
     }
 }

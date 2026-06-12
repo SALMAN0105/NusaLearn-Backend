@@ -9,22 +9,23 @@ return new class extends Migration
     /**
      * Run the migrations.
      */
-public function up(): void
-{
-    Schema::create('regions', function (Blueprint $table) {
-        $table->id();
-        $table->string('postal_code')->unique(); // Kunci utamanya
-        $table->string('district_name');
-        $table->string('language_code')->default('tolaki'); // tolaki, muna, buton
-        $table->timestamps();
-    });
-}
+    public function up(): void
+    {
+        Schema::create('wilayah', function (Blueprint $table) {
+            $table->id();
+            $table->string('kode_pos')->unique();
+            $table->string('nama_kecamatan');
+            $table->string('kode_bahasa')->default('tolaki');
+            $table->timestamp('dibuat_pada')->nullable();
+            $table->timestamp('diperbarui_pada')->nullable();
+        });
+    }
 
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('regions');
+        Schema::dropIfExists('wilayah');
     }
 };

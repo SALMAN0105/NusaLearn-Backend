@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
-use App\Models\FileConversion;
+use App\Models\KonversiFile;
 use App\Exports\KamusExport;
 use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\Process\Process;
@@ -21,23 +21,37 @@ class ContentConversionController extends Controller
 
     public function index()
     {
-        $histories = FileConversion::latest()->limit(10)->get();
+        $histories = KonversiFile::latest()->limit(10)->get();
+        if (auth()->user()?->peran === 'administrator') {
+            return view('administrator.conversions.index', compact('histories'));
+        }
         return view('admin.conversions.index', compact('histories'));
     }
 
     public function destroyLog($id)
     {
-        $log = \App\Models\FileConversion::findOrFail($id);
-        $log->delete();
-        return response()->json(['status' => 'ok', 'message' => 'Log berhasil dihapus.']);
+        \Illuminate\Support\Facades\Log::info("destroyLog accessed for ID: " . $id);
+        try {
+            $log = \App\Models\KonversiFile::findOrFail($id);
+            if ($log->jalur_output_json && $log->jalur_output_json !== '-' && \Illuminate\Support\Facades\Storage::disk('local')->exists($log->jalur_output_json)) {
+                \Illuminate\Support\Facades\Storage::disk('local')->delete($log->jalur_output_json);
+            }
+            $log->delete();
+            return response()->json(['status' => 'ok', 'message' => 'Log berhasil dihapus.']);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error("destroyLog failed: " . $e->getMessage());
+            return response()->json(['status' => 'error', 'message' => $e->getMessage()], 500);
+        }
     }
 
     public function process(Request $request)
     {
+        $this->configureLongRunningRequest();
+        
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:kamus,materi,pdf_to_excel',
             'upload_file' => [
-                'required', 'file', 'max:512000',
+                'required', 'file', 'max:512000', 'mimes:pdf,xls,xlsx,csv',
                 function ($attribute, $value, $fail) use ($request) {
                     $ext = strtolower($value->getClientOriginalExtension());
                     if ($request->type === 'kamus' && !in_array($ext, ['xls', 'xlsx', 'csv'])) {
@@ -48,6 +62,8 @@ class ContentConversionController extends Controller
                     }
                 },
             ],
+            'page_start' => 'nullable|integer|min:1|required_if:type,pdf_to_excel',
+            'page_end'   => 'nullable|integer|min:1|gte:page_start|required_if:type,pdf_to_excel',
         ]);
 
         if ($validator->fails()) {
@@ -110,48 +126,104 @@ class ContentConversionController extends Controller
             }
 
             // =========================================================================
-            // PIPELINE B: PDF -> AI -> EXCEL (Kamus)
+            // PIPELINE B: PDF -> AI (VISION) -> EXCEL (Kamus)
             // =========================================================================
             elseif ($request->type === 'pdf_to_excel') {
                 $conversionTypeDB = 'pdf_to_excel_ai';
+                
+                $pageStart = (int) $request->page_start;
+                $pageEnd   = (int) $request->page_end;
+
+                if (($pageEnd - $pageStart) > 19) {
+                    throw new \Exception("Pembatasan Sistem: Maksimal pemrosesan OCR adalah 20 halaman per request.");
+                }
+
                 if (!Storage::disk('local')->exists('temp_pdfs')) {
                     Storage::disk('local')->makeDirectory('temp_pdfs');
                 }
                 $tempPdfPath     = $file->storeAs('temp_pdfs', $timestamp . '.pdf');
                 $absolutePdfPath = Storage::disk('local')->path($tempPdfPath);
 
-                $processText = new Process([$this->pdfToTextPath, $absolutePdfPath, '-']);
-                $processText->run();
-                if (!$processText->isSuccessful()) {
-                    throw new \Exception("Gagal ekstrak PDF.");
+                $tempImgDir = Storage::disk('local')->path('temp_pdfs') . DIRECTORY_SEPARATOR . 'ocr_' . Str::random(5);
+                @mkdir($tempImgDir, 0755, true);
+
+                $pdfToCairoPath = 'C:\\Program Files\\poppler-25.12.0\\Library\\bin\\pdftocairo.exe';
+                $processImages = new \Symfony\Component\Process\Process([$pdfToCairoPath, '-jpeg', '-r', '72', '-f', (string)$pageStart, '-l', (string)$pageEnd, $absolutePdfPath, $tempImgDir . DIRECTORY_SEPARATOR . 'img']);
+                $processImages->setTimeout(300);
+                $processImages->run();
+
+                if (!$processImages->isSuccessful()) {
+                    throw new \Exception("Gagal meraster PDF ke Gambar (Proses OCR gagal).");
                 }
 
-                $extractedText = clean_pdf_text($processText->getOutput());
                 Storage::delete($tempPdfPath);
-                if (empty($extractedText)) {
-                    throw new \Exception("PDF kosong.");
+
+                $images = glob($tempImgDir . DIRECTORY_SEPARATOR . 'img*.jpg');
+                if (empty($images)) {
+                    throw new \Exception("Halaman PDF kosong atau di luar rentang.");
                 }
 
-                $safeTextForKamus = substr($extractedText, 0, 12000);
+                $geminiKey = env('GEMINI_API_KEY');
+                if (!$geminiKey) {
+                    throw new \Exception('GEMINI_API_KEY belum diatur di file .env. Buat API key Gemini di Google AI Studio atau aktifkan Generative Language API di Google Cloud, lalu simpan sebagai GEMINI_API_KEY.');
+                }
 
-                $client = OpenAI::factory()
-                    ->withApiKey(env('OPENAI_API_KEY'))
-                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.chatanywhere.tech/v1'))
-                    ->make();
-
-                $response = $client->chat()->create([
-                    'model'           => 'gpt-4o-mini',
-                    'response_format' => ['type' => 'json_object'],
-                    'messages'        => [
-                        [
-                            'role'    => 'system',
-                            'content' => 'Ekstrak kosakata ke JSON. WAJIB object dengan key "data" berisi array. Tiap item HANYA memiliki 4 keys: "source_text", "target_text", "type" ("word"/"phrase"), "category".',
-                        ],
-                        ['role' => 'user', 'content' => $safeTextForKamus],
-                    ],
+                $guzzleClient = new \GuzzleHttp\Client([
+                    'timeout'         => 300,
+                    'connect_timeout' => 30,
+                    'http_errors'     => false,
                 ]);
 
-                $parsedData = json_decode($response->choices[0]->message->content, true);
+                $parts = [];
+                $parts[] = [
+                    'text' => 'Ini adalah halaman-halaman pindaian (foto) kamus bahasa Tolaki. Tolong ekstrak seluruh baris kosakata daerah dan terjemahannya ke JSON. WAJIB mengembalikan JSON object dengan key "data" yang berisi array. Tiap item array HANYA memiliki 4 keys: "source_text", "target_text", "type" (diisi "word" atau "phrase"), dan "category". Ekstrak SETIAP baris dengan teliti tanpa terlewat.'
+                ];
+
+                foreach ($images as $imgPath) {
+                    $base64 = base64_encode(file_get_contents($imgPath));
+                    $parts[] = [
+                        'inlineData' => [
+                            'mimeType' => 'image/jpeg',
+                            'data'     => $base64
+                        ]
+                    ];
+                }
+
+                $geminiResponse = $guzzleClient->post('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=' . $geminiKey, [
+                    'headers' => [
+                        'Content-Type' => 'application/json',
+                    ],
+                    'json' => [
+                        'contents' => [
+                            [
+                                'parts' => $parts
+                            ]
+                        ],
+                        'generationConfig' => [
+                            'responseMimeType' => 'application/json'
+                        ]
+                    ]
+                ]);
+
+                // Cleanup Images
+                foreach ($images as $img) {
+                    @unlink($img);
+                }
+                @rmdir($tempImgDir);
+
+                $geminiBody = json_decode($geminiResponse->getBody()->getContents(), true);
+                if ($geminiResponse->getStatusCode() >= 400) {
+                    $message = $geminiBody['error']['message'] ?? 'Gemini mengembalikan error HTTP ' . $geminiResponse->getStatusCode();
+                    throw new \Exception('Gemini API gagal: ' . $message);
+                }
+
+                if (isset($geminiBody['candidates'][0]['content']['parts'][0]['text'])) {
+                    $responseText = $geminiBody['candidates'][0]['content']['parts'][0]['text'];
+                } else {
+                    throw new \Exception("AI format salah atau kosong dari Gemini.");
+                }
+
+                $parsedData = json_decode($responseText, true);
                 if (!isset($parsedData['data'])) {
                     throw new \Exception("AI format salah.");
                 }
@@ -215,55 +287,27 @@ class ContentConversionController extends Controller
                     mkdir($tempImgDir, 0755, true);
                 }
 
-                $imgArgs = [$this->pdfImagesPath];
-                if ($pageStart) array_push($imgArgs, '-f', $pageStart);
-                if ($pageEnd)   array_push($imgArgs, '-l', $pageEnd);
-                array_push($imgArgs, '-all', $absolutePdfPath, $tempImgDir . DIRECTORY_SEPARATOR . 'img');
-
-                $processImages = new Process($imgArgs);
-                $processImages->setTimeout(600);
-                $processImages->run();
-
-                // =========================================================================
-                // PHASE 1: Defensive Image Pre-Filtering (Local)
-                // Filter images by minimum dimensions and aspect ratio before sending
-                // to the Vision API to prevent hallucinations from decorative elements.
-                // Threshold: min 100px on each side, skewed ratios discarded.
-                // File-size is NOT used as a filter â€” AI Vision will decide relevance.
-                // =========================================================================
-                $client = OpenAI::factory()
-                    ->withApiKey(env('OPENAI_API_KEY'))
-                    ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.chatanywhere.tech/v1'))
-                    ->make();
-
                 $validImageFiles = [];
-                foreach (glob($tempImgDir . '/*.*') as $imgFile) {
-                    // Suppress errors on corrupt/unreadable files
-                    $imageInfo = @getimagesize($imgFile);
-
-                    if ($imageInfo === false) {
-                        unlink($imgFile);
-                        continue;
+                if ($request->hasFile('teacher_images')) {
+                    $images = $request->file('teacher_images');
+                    $images = is_array($images) ? array_slice($images, 0, 5) : [$images];
+                    
+                    foreach ($images as $idx => $img) {
+                        if ($img->isValid()) {
+                            $extension = $img->getClientOriginalExtension();
+                            $manualFileName = 'manual_' . $idx . '.' . $extension;
+                            $absoluteDir = storage_path('app/temp_pdfs/img_' . $timestamp);
+                            $img->move($absoluteDir, $manualFileName);
+                            $validImageFiles[] = $absoluteDir . DIRECTORY_SEPARATOR . $manualFileName;
+                        }
                     }
-
-                    $width  = $imageInfo[0];
-                    $height = $imageInfo[1];
-
-                    // Discard images that are too small (under 100px on either side)
-                    if ($width < 100 || $height < 100) {
-                        unlink($imgFile);
-                        continue;
-                    }
-
-                    // Discard images with extremely skewed aspect ratios (banners, borders, icons)
-                    $ratio = $width / $height;
-                    if ($ratio > 4.0 || $ratio < 0.25) {
-                        unlink($imgFile);
-                        continue;
-                    }
-
-                    $validImageFiles[] = $imgFile;
                 }
+
+                $client = OpenAI::factory()
+                    ->withApiKey(env('OPENAI_API_KEY', 'sk-o44DmAnE8ceq5OWSqECLINUi1ugCeTbWAdGYsPyh1QjBmXou'))
+                    ->withBaseUri('https://api.chatanywhere.tech/v1')
+                    ->withHttpClient(new \GuzzleHttp\Client(['timeout' => 60]))
+                    ->make();
 
                 // =========================================================================
                 // PHASE 2: Batch Vision API Call (Single Request for All Images)
@@ -280,10 +324,21 @@ class ContentConversionController extends Controller
                     $ext         = pathinfo($imgFile, PATHINFO_EXTENSION);
                     $newFileName = $folderName . '_img_' . $imgCount . '.' . $ext;
                     $newFilePath = $imageOutputDir . DIRECTORY_SEPARATOR . $newFileName;
-                    rename($imgFile, $newFilePath);
+                    if (file_exists($imgFile)) {
+                        copy($imgFile, $newFilePath);
+                        unlink($imgFile);
+                    } else {
+                        throw new \Exception("File gambar gagal diproses karena rute tidak ditemukan: " . $imgFile);
+                    }
 
                     $relativeFilename = 'assets/' . $folderName . '/' . $newFileName;
                     $mimeType         = mime_content_type($newFilePath);
+
+                    $filesizeKb = filesize($newFilePath) / 1024;
+                    if ($filesizeKb > 2048) {
+                        continue;
+                    }
+
                     $dataUri          = 'data:' . $mimeType . ';base64,' . base64_encode(file_get_contents($newFilePath));
 
                     $imagePayloads[$newFileName] = [
@@ -292,20 +347,6 @@ class ContentConversionController extends Controller
                         'dataUri'          => $dataUri,
                         'index'            => $imgCount,
                     ];
-
-                    \App\Models\AssetLibrary::firstOrCreate(
-                        ['filename' => $relativeFilename],
-                        [
-                            'original_name' => $newFileName,
-                            'asset_type'    => 'image',
-                            'extension'     => strtolower($ext),
-                            'mime_type'     => $mimeType,
-                            'size_kb'       => round(filesize($newFilePath) / 1024),
-                            'source_api'    => 'manual',
-                            'tags'          => explode('-', $folderName),
-                            'is_active'     => true,
-                        ]
-                    );
 
                     $imgCount++;
                 }
@@ -439,9 +480,12 @@ Kembalikan HANYA JSON valid tanpa markdown, tanpa komentar, dengan struktur PERS
 }
 
 INSTRUKSI PENTING:
-- Format ulang teks mentah menjadi array chunks yang rapi.
+- Format ulang teks mentah menjadi array chunks yang rapi. Ekstrak SELURUH substansi materi selengkap mungkin. Jangan meringkas atau membuang poin narasi/edukatif yang penting.
+- Pecah paragraf panjang menjadi beberapa chunk "paragraph" yang pendek-pendek (maks. 2-3 kalimat per chunk) agar ramah anak dan mudah dibaca di layar HP (tidak menumpuk).
+- Perbaiki hasil salah ketik (typo) atau format acak dari ekstraksi PDF (OCR), dan susun menjadi kalimat yang padu serta kaya akan informasi bagi siswa.
 - Jika menemukan deret angka atau tabel nilai tempat (seperti Puluhan dan Satuan), WAJIB ubah menjadi chunk dengan type: "table" yang memiliki "headers" dan "rows".
 - Sisipkan chunk type: "image" di lokasi yang tepat berdasarkan konteks teks, menggunakan data daftar gambar yang saya berikan. Gunakan "url" dan "alt_text" PERSIS dari daftar gambar.
+- Tambahkan key `"layout": "center"` pada SETIAP chunk bertipe "image" agar aplikasi pembaca tahu gambar ini harus diletakkan rapi di tengah.
 - Nilai "section_type" WAJIB salah satu dari: "intro", "concept", "example", "summary".
 - JANGAN mendeskripsikan elemen dekoratif, nomor halaman, ikon kecil, atau background.
 - JANGAN buat chunk untuk angka tunggal, simbol, atau nomor halaman.
@@ -504,32 +548,48 @@ PROMPT;
                 );
             }
 
-            FileConversion::create([
-                'original_filename' => $fileName,
-                'conversion_type'   => $conversionTypeDB,
-                'json_output_path'  => $outputFilePath,
-                'file_size_kb'      => $fileSize,
+            KonversiFile::create([
+                'nama_file_asli'    => $fileName,
+                'tipe_konversi'     => $conversionTypeDB,
+                'jalur_output_json' => $outputFilePath,
+                'ukuran_file_kb'    => $fileSize,
                 'status'            => 'success',
             ]);
 
             return response()->json([
                 'status'       => 'success',
                 'message'      => 'Protokol Konversi Berhasil',
-                'download_url' => route('converter.download', ['path' => base64_encode($outputFilePath)]),
+                'download_url' => route($this->downloadRouteName(), ['path' => base64_encode($outputFilePath)]),
             ]);
 
-        } catch (\Exception $e) {
-            FileConversion::create([
-                'original_filename' => $fileName ?? '-',
-                'conversion_type'   => $request->type ?? 'unknown',
-                'json_output_path'  => '-',
-                'file_size_kb'      => $fileSize ?? 0,
+        } catch (\Throwable $e) {
+            \App\Models\KonversiFile::create([
+                'nama_file_asli'    => $fileName ?? '-',
+                'tipe_konversi'     => $request->type ?? 'unknown',
+                'jalur_output_json' => '-',
+                'ukuran_file_kb'    => $fileSize ?? 0,
                 'status'            => 'failed',
-                'error_log'         => $e->getMessage(),
+                'log_error'         => substr($e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine(), 0, 200),
             ]);
 
             return response()->json(['status' => 'error', 'errors' => [$e->getMessage()]], 422);
         }
+    }
+
+    private function configureLongRunningRequest(): void
+    {
+        ini_set('memory_limit', '2048M');
+        ini_set('default_socket_timeout', '300');
+        ini_set('max_execution_time', '0');
+        ignore_user_abort(true);
+        set_time_limit(0);
+    }
+
+    private function downloadRouteName(): string
+    {
+        return auth()->user()?->peran === 'administrator'
+            ? 'administrator.converter.download'
+            : 'converter.download';
     }
 
     // =========================================================================
@@ -596,10 +656,33 @@ PROMPT;
     public function download($path)
     {
         $decodedPath  = base64_decode($path);
+
+        if (strpos($decodedPath, '..') !== false || preg_match('/^[\/\\\\]|[a-zA-Z]:/', $decodedPath)) {
+            abort(403, 'Akses ditolak: Jalur file tidak valid.');
+        }
+
+        if (!Str::startsWith($decodedPath, ['json_exports/', 'excel_exports/'])) {
+            abort(403, 'Akses ditolak: Direktori tidak diizinkan.');
+        }
+
         $absolutePath = Storage::disk('local')->path($decodedPath);
         $absolutePath = str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $absolutePath);
 
-        if (file_exists($absolutePath)) {
+        if (file_exists($absolutePath) && is_file($absolutePath)) {
+            // Memory Limit check for large files
+            if (filesize($absolutePath) > 50 * 1024 * 1024) {
+                abort(500, 'File terlalu besar untuk diproses.');
+            }
+            
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mime = finfo_file($finfo, $absolutePath);
+            finfo_close($finfo);
+
+            $allowedMimes = ['application/json', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip'];
+            if (!in_array($mime, $allowedMimes)) {
+                abort(403, 'Tipe file tidak diizinkan.');
+            }
+
             return response()->download($absolutePath);
         }
 

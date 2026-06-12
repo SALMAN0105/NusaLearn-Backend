@@ -192,7 +192,7 @@
                         ?
                     </div>
                     <div>
-                        <h2 id="modal-student-name" class="text-lg font-black text-black dark:text-white">Memuat Data...</h2>
+                        <h2 id="modal-student-nama" class="text-lg font-black text-black dark:text-white">Memuat Data...</h2>
                         <p  id="modal-student-meta" class="text-xs text-gray-400 dark:text-purple-300/60 font-semibold mt-0.5"></p>
                     </div>
                 </div>
@@ -402,7 +402,7 @@
                 </a>
 
                 <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Konten</p>
-                <a href="{{ route('materials.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('materi.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-book-open w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Materi Belajar</span>
                 </a>
@@ -410,32 +410,24 @@
                     <i class="fa-solid fa-file-export w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Kelola File</span>
                 </a>
-                <a href="{{ route('questions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
+                <a href="{{ route('soal.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
                     <i class="fa-solid fa-clipboard-question w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
                     <span>Bank Soal</span>
                 </a>
 
-                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Master Data</p>
-                <a href="{{ route('languages.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-language w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Bahasa Daerah</span>
-                </a>
+                <p class="px-3 text-[11px] font-black text-gray-400 dark:text-purple-300/50 mt-6 mb-2 uppercase tracking-widest">Data Akademik</p>
                 <a href="#" class="nav-active flex items-center gap-3 px-3 py-2.5 border-2 rounded-xl font-bold text-sm transition-all group">
                     <i class="fa-solid fa-users w-5 text-center flex-shrink-0"></i>
                     <span>Data Siswa</span>
                 </a>
-                <a href="{{ route('regions.index') }}" class="flex items-center gap-3 px-3 py-2.5 text-gray-600 dark:text-gray-300 hover:bg-p-lt dark:hover:bg-p-dark/40 hover:text-p dark:hover:text-white border-2 border-transparent hover:border-black dark:hover:border-p-dark rounded-xl transition-all font-semibold text-sm group">
-                    <i class="fa-solid fa-map-location-dot w-5 text-center flex-shrink-0 group-hover:scale-110 transition-transform"></i>
-                    <span>Wilayah</span>
-                </a>
-            </nav>
+                </nav>
 
             <div class="border-t-2 border-black dark:border-p-dark p-4 bg-white dark:bg-[#2d2460]">
                 <div class="flex items-center gap-3">
-                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->name ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
+                    <img src="https://ui-avatars.com/api/?name={{ Auth::user()->nama ?? 'Admin' }}&background=7C3AED&color=fff&bold=true"
                          alt="Avatar" class="w-10 h-10 rounded-full border-2 border-black dark:border-p-dark shadow-neo-sm flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->name ?? 'Administrator' }}</p>
+                        <p class="text-sm font-black text-black dark:text-white truncate">{{ Auth::user()->nama ?? 'Guru' }}</p>
                         <p class="text-xs text-gray-400 font-semibold truncate">Sistem Inti Laravel</p>
                     </div>
                     <form action="{{ route('logout') }}" method="POST">
@@ -465,11 +457,7 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
-                    @if(session('success'))
-                        <div class="hidden sm:flex bg-neo-green border-2 border-black text-black px-4 py-2 rounded-xl items-center gap-2 shadow-neo-sm text-sm font-bold fade-in" role="alert">
-                            <i class="fa-solid fa-circle-check"></i> <span>{{ session('success') }}</span>
-                        </div>
-                    @endif
+                    
                     <button id="theme-toggle"
                             class="w-10 h-10 flex items-center justify-center bg-p-lt dark:bg-p-dark/40 border-2 border-black dark:border-p-dark text-p dark:text-purple-300 rounded-xl shadow-neo-sm hover:bg-p hover:text-white dark:hover:bg-p transition-all">
                         <i id="theme-toggle-icon" class="fa-solid fa-moon text-base"></i>
@@ -493,7 +481,7 @@
                             <i class="fa-solid fa-magnifying-glass"></i>
                         </span>
                         <input type="text" name="search" value="{{ request('search') }}"
-                               placeholder="Query nama / username..."
+                               placeholder="Query nama / nama_pengguna..."
                                class="w-full pl-11 pr-4 py-3 bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark rounded-xl text-sm font-bold text-black dark:text-white outline-none focus:border-p dark:focus:border-p-mid focus:shadow-neo-p transition-all placeholder:text-gray-400">
                     </form>
                 </div>
@@ -515,43 +503,43 @@
                             <tbody class="divide-y-2 divide-p-lt dark:divide-p-dark/30 text-sm">
                                 @forelse($students ?? [] as $student)
                                 @php
-                                    $sName   = e(addslashes($student->name ?? 'Unknown'));
-                                    $sUser   = e(addslashes($student->username ?? ''));
-                                    $sSchool = e(addslashes($student->school_origin ?? 'Belum Terkalibrasi'));
+                                    $sName   = e(addslashes($student->nama ?? 'Unknown'));
+                                    $sUser   = e(addslashes($student->nama_pengguna ?? ''));
+                                    $sSchool = e(addslashes($student->asal_sekolah ?? 'Belum Terkalibrasi'));
                                 @endphp
                                 <tr class="hover:bg-gray-50 dark:hover:bg-p-dark/20 transition-colors group">
                                     <td class="px-6 py-5">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 rounded-xl bg-p border-2 border-black dark:border-p-dark flex items-center justify-center text-white font-black text-lg shadow-neo-sm">
-                                                {{ strtoupper(substr($student->name ?? 'U', 0, 1)) }}
+                                                {{ strtoupper(substr($student->nama ?? 'U', 0, 1)) }}
                                             </div>
                                             <div class="font-extrabold text-black dark:text-white text-base">
-                                                {{ $student->name ?? 'Unknown Entity' }}
+                                                {{ $student->nama ?? 'Unknown Entity' }}
                                             </div>
                                         </div>
                                     </td>
                                     <td class="px-6 py-5 text-center">
                                         <span class="font-mono text-xs font-bold text-black dark:text-white bg-p-xlt dark:bg-[#1e1b4b] border-2 border-black dark:border-p-dark px-3 py-1.5 rounded-lg shadow-neo-sm tracking-wider">
-                                            {{ '@' . ($student->username ?? 'null') }}
+                                            {{ '@' . ($student->nama_pengguna ?? 'null') }}
                                         </span>
                                     </td>
                                     <td class="px-6 py-5 max-w-[200px]">
-                                        <div class="text-black dark:text-white font-bold truncate flex items-center gap-2 text-sm" title="{{ $student->school_origin }}">
+                                        <div class="text-black dark:text-white font-bold truncate flex items-center gap-2 text-sm" title="{{ $student->asal_sekolah }}">
                                             <i class="fa-solid fa-school text-p-mid text-xs"></i>
-                                            {{ $student->school_origin ?? 'Belum Terkalibrasi' }}
+                                            {{ $student->asal_sekolah ?? 'Belum Terkalibrasi' }}
                                         </div>
                                     </td>
                                     <td class="px-6 py-5 text-center">
-                                        @if(isset($student->postal_code) && $student->postal_code)
+                                        @if(isset($student->kode_pos) && $student->kode_pos)
                                             <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-[11px] font-black tracking-wider uppercase bg-neo-yellow text-black border-2 border-black dark:border-p-dark shadow-neo-sm">
-                                                <i class="fa-solid fa-map-pin"></i> {{ $student->postal_code }}
+                                                <i class="fa-solid fa-map-pin"></i> {{ $student->kode_pos }}
                                             </span>
                                         @else
                                             <span class="text-[11px] font-black uppercase text-gray-400 dark:text-purple-300/50 italic border-2 border-dashed border-gray-300 dark:border-p-dark px-2 py-1 rounded-md">Data Kosong</span>
                                         @endif
                                     </td>
                                     <td class="px-6 py-5 text-center text-gray-600 dark:text-gray-300 font-bold text-xs font-mono">
-                                        {{ $student->created_at ? $student->created_at->format('d M Y') : 'N/A' }}
+                                        {{ $student->dibuat_pada ? $student->dibuat_pada->format('d M Y') : 'N/A' }}
                                     </td>
                                     <td class="px-6 py-5 text-right">
                                         <div class="flex items-center justify-end gap-2">
@@ -603,7 +591,7 @@
     <!-- ═══════════════════════ SCRIPTS ═══════════════════════ -->
     <script>
         /* ── Preloader ── */
-        window.addEventListener('load', () => {
+        window.addEventListener('DOMContentLoaded', () => {
             const pre = document.getElementById('preloader');
             pre.style.opacity = '0';
             setTimeout(() => pre.style.visibility = 'hidden', 500);
@@ -643,15 +631,15 @@
         ══════════════════════════════════════════ */
         let progressChartInstance = null;
 
-        function openProgressModal(studentId, name, username, school) {
+        function openProgressModal(studentId, nama, nama_pengguna, school) {
             /* Reset tampilan */
             document.getElementById('modal-loading').classList.remove('hidden');
             document.getElementById('modal-body').classList.add('hidden');
 
             /* Isi header */
-            document.getElementById('modal-avatar').textContent       = name.charAt(0).toUpperCase();
-            document.getElementById('modal-student-name').textContent = name;
-            document.getElementById('modal-student-meta').textContent = '@' + username + ' · ' + school;
+            document.getElementById('modal-avatar').textContent       = nama.charAt(0).toUpperCase();
+            document.getElementById('modal-student-nama').textContent = nama;
+            document.getElementById('modal-student-meta').textContent = '@' + nama_pengguna + ' · ' + school;
 
             /* Hancurkan chart lama */
             if (progressChartInstance) {
@@ -884,5 +872,30 @@
             }
         });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>

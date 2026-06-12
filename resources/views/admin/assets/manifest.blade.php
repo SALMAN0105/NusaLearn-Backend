@@ -42,7 +42,7 @@
             <div class="flex items-center justify-between p-5 border-b-2 border-black dark:border-p-dark">
                 <div>
                     <h2 class="font-black text-black dark:text-white">Teks Manifest untuk Prompt AI</h2>
-                    <p class="text-xs text-gray-400 mt-1">Ini yang dikirim ke LLM saat membuat soal. AI hanya boleh pakai filename di bawah ini.</p>
+                    <p class="text-xs text-gray-400 mt-1">Ini yang dikirim ke LLM saat membuat soal. AI hanya boleh pakai nama_file di bawah ini.</p>
                 </div>
                 <button onclick="copyManifest()" class="bg-yellow-400 border-2 border-black rounded-xl px-4 py-2 font-black text-xs text-black shadow-neo-sm hover:shadow-neo transition-all">
                     <i class="fa-solid fa-copy mr-1"></i> Salin
@@ -55,8 +55,33 @@
 <script>
 function copyManifest() {
     navigator.clipboard.writeText(document.getElementById('manifest-text').textContent)
-        .then(() => alert('Manifest disalin ke clipboard!'));
+        .then(() => showCustomAlert('Manifest disalin ke clipboard!'));
 }
+</script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
 </script>
 </body>
 </html>

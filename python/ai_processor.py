@@ -20,7 +20,7 @@ sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="repla
 DB_CONFIG = {
     "host": "127.0.0.1",
     "user": "root",
-    "password": "",
+    "password": "root",
     "database": "tolaki_learning_db",
 }
 
@@ -428,7 +428,7 @@ def process_material(material_id: int) -> bool:
 
         # ── 1. Fetch materi ──────────────────────────────────────────────
         cursor.execute(
-            "SELECT content_indo, title_indo, language_code FROM materials WHERE id = %s",
+            "SELECT konten, judul, kode_bahasa FROM materi WHERE id = %s",
             (material_id,)
         )
         row = cursor.fetchone()
@@ -436,10 +436,10 @@ def process_material(material_id: int) -> bool:
             print(f"[ERROR] Material {material_id} tidak ditemukan.")
             return False
 
-        title        = row["title_indo"] or "Untitled"
-        lang_code    = row["language_code"] or "id"
+        title        = row["judul"] or "Untitled"
+        lang_code    = row["kode_bahasa"] or "id"
 
-        raw_content = row["content_indo"]
+        raw_content = row["konten"]
         while isinstance(raw_content, str):
             try:
                 raw_content = json.loads(raw_content)
@@ -577,8 +577,8 @@ def process_material(material_id: int) -> bool:
 
         # ── 6. Simpan ke DB ──────────────────────────────────────────────
         cursor.execute(
-            "UPDATE materials SET ai_embeddings = %s, ai_status = 'ready', "
-            "ai_processed_at = NOW() WHERE id = %s",
+            "UPDATE materi SET ai_embeddings = %s, status_ai = 'ready', "
+            "ai_diproses_pada = NOW() WHERE id = %s",
             (ai_embeddings_json, material_id),
         )
         conn.commit()
@@ -605,7 +605,7 @@ def process_material(material_id: int) -> bool:
         if conn and conn.is_connected() and cursor:
             try:
                 cursor.execute(
-                    "UPDATE materials SET ai_status = 'failed' WHERE id = %s",
+                    "UPDATE materi SET status_ai = 'failed' WHERE id = %s",
                     (material_id,),
                 )
                 conn.commit()

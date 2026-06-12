@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Models\User;
+use App\Models\Pengguna;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Cache;
@@ -23,7 +23,7 @@ class PasswordRecoveryController extends Controller
     // 2. Fase: Validasi Email & Kirim OTP
     public function sendOtp(Request $request)
     {
-        $request->validate(['email' => 'required|email|exists:users,email']);
+        $request->validate(['email' => 'required|email|exists:pengguna,email']);
         $email = $request->email;
 
         // Generate 6 Digit OTP Kriptografik (Secure Random)
@@ -71,17 +71,17 @@ class PasswordRecoveryController extends Controller
         }
 
         $request->validate([
-            'password' => [
+            'kata_sandi' => [
                 'required', 'confirmed',
                 Password::min(8)->mixedCase()->numbers()->symbols()
             ]
         ]);
 
         $email = session('reset_email');
-        $user = User::where('email', $email)->firstOrFail();
+        $user = Pengguna::where('email', $email)->firstOrFail();
 
         // Update Kredensial
-        $user->password = Hash::make($request->password);
+        $user->kata_sandi = Hash::make($request->kata_sandi);
         $user->save();
 
         // Garbage Collection: Hapus jejak cache dan session keamanan

@@ -5,9 +5,9 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Models\Question;
-use App\Models\Material;
-use App\Models\AssetLibrary;
+use App\Models\Soal;
+use App\Models\Materi;
+use App\Models\PustakaAset;
 use App\Services\QuizGeneratorService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -23,25 +23,51 @@ class QuestionController extends Controller
     // INDEX
     // =========================================================================
 
+    private function checkMateriOwnership($materiId)
+    {
+        $user = auth()->user();
+        if ($user->peran === 'guru' || $user->peran === 'admin') {
+            $materi = Materi::findOrFail($materiId);
+            if ($materi->asal_sekolah !== $user->asal_sekolah) {
+                abort(403, 'Unauthorized Action. Anda tidak memiliki akses ke materi ini.');
+            }
+        }
+    }
+
     public function index(Request $request)
     {
-        $materials = Material::select('id', 'title_indo')->get();
-        $query     = Question::with('material');
+        $user = auth()->user();
+        
+        $materiQuery = Materi::select('id', 'judul');
+        $soalQuery = Soal::with('materi');
 
-        if ($request->filled('material_id') && $request->material_id !== 'all') {
-            $query->where('material_id', $request->material_id);
+        if ($user->peran === 'guru' || $user->peran === 'admin') {
+            $materiQuery->where('asal_sekolah', $user->asal_sekolah);
+            $soalQuery->whereHas('materi', function ($q) use ($user) {
+                $q->where('asal_sekolah', $user->asal_sekolah);
+            });
+        }
+
+        $materials = $materiQuery->get();
+        $query     = $soalQuery;
+
+        if ($request->filled('materi_id') && $request->materi_id !== 'all') {
+            $query->where('materi_id', $request->materi_id);
         }
 
         if ($request->filled('search')) {
-            $query->where('question_text_indo', 'LIKE', '%' . $request->search . '%');
+            $query->where('teks_soal', 'LIKE', '%' . $request->search . '%');
         }
 
-        if ($request->filled('template_type')) {
-            $query->where('template_type', $request->template_type);
+        if ($request->filled('tipe_template')) {
+            $query->where('tipe_template', $request->tipe_template);
         }
 
-        $questions = $query->latest()->paginate(10)->withQueryString();
+        $questions = $query->latest()->paginate(5)->withQueryString();
 
+        if ($user->peran === 'administrator') {
+            return view('administrator.questions', compact('questions', 'materials'));
+        }
         return view('admin.questions', compact('questions', 'materials'));
     }
 
@@ -52,16 +78,26 @@ class QuestionController extends Controller
     public function generate(Request $request): JsonResponse
     {
         $validated = $request->validate([
-            'material_id'   => 'required|exists:materials,id',
-            'template_type' => 'required|in:' . implode(',', array_keys(Question::ALL_TEMPLATES)),
+            'materi_id'   => 'required|exists:materi,id',
+            'tipe_template' => 'required|in:' . implode(',', array_keys(Soal::ALL_TEMPLATES)),
             'difficulty'    => 'required|integer|min:1|max:3',
         ]);
 
-        $result = $this->quizGenerator->generate(
-            materialId:   (int) $validated['material_id'],
-            templateType: $validated['template_type'],
-            difficulty:   (int) $validated['difficulty'],
-        );
+        $this->checkMateriOwnership($validated['materi_id']);
+
+        try {
+            $result = $this->quizGenerator->generate(
+                materialId:   (int) $validated['materi_id'],
+                templateType: $validated['tipe_template'],
+                difficulty:   (int) $validated['difficulty'],
+            );
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[QuestionController@generateExplanationApi] ' . $e->getMessage());
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Gagal terhubung ke layanan AI atau terjadi timeout. Silakan coba lagi.'
+            ], 500);
+        }
 
         if (!$result['success']) {
             return response()->json([
@@ -75,8 +111,8 @@ class QuestionController extends Controller
 
         return response()->json([
             'status'           => 'success',
-            'question_data'    => $result['question_data'],
-            'assets_required'  => $result['assets_required'],
+            'data_soal'    => $result['data_soal'],
+            'aset_diperlukan'  => $result['aset_diperlukan'],
             'missing_assets'   => $result['missing_assets'],
             'raw_json'         => $result['raw_json'],
             'has_warnings'     => $hasWarnings,
@@ -97,9 +133,9 @@ class QuestionController extends Controller
 
     public function store(Request $request)
     {
-        $templateType = $request->input('template_type', Question::TEMPLATE_MULTIPLE_CHOICE);
+        $templateType = $request->input('tipe_template', Soal::TEMPLATE_MULTIPLE_CHOICE);
 
-        if ($templateType === Question::TEMPLATE_MULTIPLE_CHOICE
+        if ($templateType === Soal::TEMPLATE_MULTIPLE_CHOICE
             && $request->filled('option_a')
         ) {
             return $this->storeManualMultipleChoice($request);
@@ -108,14 +144,22 @@ class QuestionController extends Controller
         return $this->storeMultimediaQuestion($request);
     }
 
-    public function destroy(Question $question)
+    public function destroy(Soal $soal)
     {
+        $this->checkMateriOwnership($soal->materi_id);
+
+        $question = $soal;
         $question->delete();
-        return back()->with('success', 'Soal berhasil dihapus.');
+        
+        $routePrefix = auth()->user()->peran === 'administrator' ? 'administrator.soal.index' : 'soal.index';
+        return redirect()->route($routePrefix)->with('success', 'Soal berhasil dihapus.');
     }
 
-    public function update(Request $request, Question $question)
+    public function update(Request $request, Soal $soal)
     {
+        $this->checkMateriOwnership($soal->materi_id);
+
+        $question = $soal;
         // Untuk sementara, kita gunakan storeManual logic atau similar
         // Namun karena ini update, kita perlu menyesuaikan
         
@@ -123,13 +167,14 @@ class QuestionController extends Controller
         return $this->updateManual($request, $question);
     }
 
-    private function updateManual(Request $request, Question $question)
+    private function updateManual(Request $request, Soal $question)
     {
         $validated = $request->validate([
-            'material_id'        => 'required|integer|exists:materials,id',
-            'template_type'      => 'required|in:multiple_choice,drag_and_drop,matching_game,fill_blank,image_quiz',
-            'difficulty_weight'  => 'required|integer|min:1|max:5',
-            'question_text_indo' => 'required|string|max:2000',
+            'materi_id'        => 'required|integer|exists:materi,id',
+            'kelas'            => 'required|integer|min:1|max:3',
+            'tipe_template'      => 'required|in:multiple_choice,drag_and_drop,matching_game,fill_blank,image_quiz',
+            'bobot_kesulitan'  => 'required|integer|min:1|max:5',
+            'teks_soal' => 'required|string|max:2000',
             'explanation'        => 'nullable|string|max:2000',
             'options'            => 'nullable|array|min:2|max:4',
             'options.*'          => 'nullable|string|max:500',
@@ -149,13 +194,15 @@ class QuestionController extends Controller
             'main_image'         => 'nullable|image|mimes:jpeg,png,webp|max:3072',
         ]);
 
-        $templateType   = $validated['template_type'];
-        $questionData   = $question->question_data ?? [];
-        $assetsRequired = $question->assets_required ?? [];
-        $correctKey     = $question->correct_answer_key;
-        $optionsJson    = $question->options_json;
+        $this->checkMateriOwnership($validated['materi_id']);
 
-        // Logic build question_data (Mirip storeManual tapi update field yang ada)
+        $templateType   = $validated['tipe_template'];
+        $questionData   = $question->data_soal ?? [];
+        $assetsRequired = $question->aset_diperlukan ?? [];
+        $correctKey     = $question->kunci_jawaban;
+        $optionsJson    = $question->opsi_json;
+
+        // Logic build data_soal (Mirip storeManual tapi update field yang ada)
         // Kita bisa copy logic dari storeManual atau buat yang lebih generic
         
         switch ($templateType) {
@@ -170,12 +217,12 @@ class QuestionController extends Controller
                 ])->values()->all();
                 $correctKey   = $letters[$correctIdx] ?? 'a';
                 $questionData = [
-                    'question_text_indo' => $validated['question_text_indo'],
-                    'template_type'      => 'multiple_choice',
+                    'teks_soal' => $validated['teks_soal'],
+                    'tipe_template'      => 'multiple_choice',
                     'options'            => $optionsJson,
-                    'correct_answer_key' => $correctKey,
+                    'kunci_jawaban' => $correctKey,
                     'explanation'        => $validated['explanation'] ?? null,
-                    'assets_required'    => [],
+                    'aset_diperlukan'    => [],
                 ];
                 break;
 
@@ -191,29 +238,40 @@ class QuestionController extends Controller
                     if (!$file || !$file->isValid()) continue;
                     $hash     = md5_file($file->getRealPath());
                     $ext      = $file->getClientOriginalExtension() ?: 'jpg';
-                    $filename = $hash . '.' . $ext;
-                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
-                        $file->storeAs('quiz-assets', $filename, 'public');
+                    $nama_file = $hash . '.' . $ext;
+                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $nama_file)) {
+                        $file->storeAs('quiz-assets', $nama_file, 'public');
                     }
-                    \App\Models\AssetLibrary::firstOrCreate(
-                        ['filename' => $filename],
-                        ['original_name' => $file->getClientOriginalName(), 'mime_type' => $file->getMimeType(), 'is_active' => true]
+                    \App\Models\PustakaAset::firstOrCreate(
+                        ['nama_file' => $nama_file],
+                        [
+                            'nama_asli' => $file->getClientOriginalName(), 
+                            'tipe_mime' => $file->getMimeType(), 
+                            'ekstensi' => $ext,
+                            'tipe_aset' => 'image',
+                            'sumber_api' => 'manual_upload',
+                            'ukuran_kb' => round($file->getSize() / 1024),
+                            'aktif' => true
+                        ]
                     );
                     
-                    if (!in_array($filename, $assetsRequired)) {
-                        $assetsRequired[] = $filename;
+                    if (!in_array($nama_file, $assetsRequired)) {
+                        $assetsRequired[] = $nama_file;
                     }
                     
                     // Update item di index tersebut atau tambah jika baru
                     $items[$i] = [
-                        'id'          => 'item_' . ($i + 1),
-                        'image_asset' => $filename,
+                        'id'          => 'item_temp', // Akan di-fix di bawah
+                        'image_asset' => $nama_file,
                         'correct_zone'=> null, // Reset dulu, akan di-set di bawah
                     ];
                 }
                 
-                // Re-set correct zone berdasarkan index yang dipilih
+                // Pastikan array re-indexed dan ID urut kembali
+                $items = array_values($items);
+                // Re-set correct zone dan ID berdasarkan index yang dipilih
                 foreach($items as $i => &$item) {
+                    $item['id'] = 'item_' . ($i + 1);
                     $item['correct_zone'] = ($i === $correctIdx) ? 'zone_1' : null;
                 }
 
@@ -234,13 +292,13 @@ class QuestionController extends Controller
                 }
 
                 $questionData = [
-                    'question_text_indo' => $validated['question_text_indo'],
-                    'template_type'      => 'drag_and_drop',
+                    'teks_soal' => $validated['teks_soal'],
+                    'tipe_template'      => 'drag_and_drop',
                     'items'              => $items,
                     'zones'              => $zones,
                     'correct_mapping'    => $correctMapping,
                     'explanation'        => $validated['explanation'] ?? null,
-                    'assets_required'    => $assetsRequired,
+                    'aset_diperlukan'    => $assetsRequired,
                 ];
                 break;
 
@@ -259,21 +317,29 @@ class QuestionController extends Controller
                     $correctPairs[] = ['left' => $leftId, 'right' => $rightId];
                 }
                 $questionData = [
-                    'question_text_indo' => $validated['question_text_indo'],
-                    'template_type'      => 'matching_game',
+                    'teks_soal' => $validated['teks_soal'],
+                    'tipe_template'      => 'matching_game',
                     'pairs'              => $pairs,
                     'correct_pairs'      => $correctPairs,
                     'explanation'        => $validated['explanation'] ?? null,
-                    'assets_required'    => [],
+                    'aset_diperlukan'    => [],
                 ];
                 break;
 
             case 'fill_blank':
-                $sentence       = $request->input('fill_sentence', $validated['question_text_indo']);
+                $sentence       = $request->input('fill_sentence', $validated['teks_soal']);
                 $correctAnswers = array_values(array_filter($request->input('fill_correct_answers', []), 'strlen'));
                 $wordBankRaw    = json_decode($request->input('word_bank', '[]'), true) ?? [];
                 $wordBank       = array_values(array_filter($wordBankRaw, 'strlen'));
                 
+                $blankCount  = substr_count($sentence, '___');
+                if ($blankCount === 0) {
+                    return back()->withErrors(['fill_sentence' => 'Kalimat harus mengandung ___ sebagai penanda kosong.'])->withInput();
+                }
+                if (count($correctAnswers) !== $blankCount) {
+                    return back()->withErrors(['fill_correct_answers' => "Jumlah jawaban ({$blankCount} blank) tidak sesuai."])->withInput();
+                }
+
                 $blanks = [];
                 foreach ($correctAnswers as $i => $ans) {
                     $blanks[] = ['id' => 'blank_' . ($i + 1), 'correct_answer' => $ans, 'hint' => null];
@@ -281,33 +347,41 @@ class QuestionController extends Controller
                 }
                 shuffle($wordBank);
                 $questionData = [
-                    'question_text_indo' => $sentence,
-                    'template_type'      => 'fill_blank',
+                    'teks_soal' => $sentence,
+                    'tipe_template'      => 'fill_blank',
                     'blanks'             => $blanks,
                     'word_bank'          => $wordBank,
                     'correct_answers'    => $correctAnswers,
                     'explanation'        => $validated['explanation'] ?? null,
-                    'assets_required'    => [],
+                    'aset_diperlukan'    => [],
                 ];
                 break;
 
             case 'image_quiz':
-                $mainImageFilename = $questionData['main_image'] ?? null;
+                $mainImagenama_file = $questionData['main_image'] ?? null;
                 if ($request->hasFile('main_image') && $request->file('main_image')->isValid()) {
                     $file     = $request->file('main_image');
                     $hash     = md5_file($file->getRealPath());
                     $ext      = $file->getClientOriginalExtension() ?: 'jpg';
-                    $filename = $hash . '.' . $ext;
-                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
-                        $file->storeAs('quiz-assets', $filename, 'public');
+                    $nama_file = $hash . '.' . $ext;
+                    if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $nama_file)) {
+                        $file->storeAs('quiz-assets', $nama_file, 'public');
                     }
-                    \App\Models\AssetLibrary::firstOrCreate(
-                        ['filename' => $filename],
-                        ['original_name' => $file->getClientOriginalName(), 'mime_type' => $file->getMimeType(), 'is_active' => true]
+                    \App\Models\PustakaAset::firstOrCreate(
+                        ['nama_file' => $nama_file],
+                        [
+                            'nama_asli' => $file->getClientOriginalName(), 
+                            'tipe_mime' => $file->getMimeType(), 
+                            'ekstensi' => $ext,
+                            'tipe_aset' => 'image',
+                            'sumber_api' => 'manual_upload',
+                            'ukuran_kb' => round($file->getSize() / 1024),
+                            'aktif' => true
+                        ]
                     );
-                    $mainImageFilename = $filename;
-                    if (!in_array($filename, $assetsRequired)) {
-                        $assetsRequired[] = $filename;
+                    $mainImagenama_file = $nama_file;
+                    if (!in_array($nama_file, $assetsRequired)) {
+                        $assetsRequired[] = $nama_file;
                     }
                 }
                 $options    = array_values(array_filter($request->input('options', []), 'strlen'));
@@ -320,26 +394,27 @@ class QuestionController extends Controller
                 ])->values()->all();
                 $correctKey   = $letters[$correctIdx] ?? 'a';
                 $questionData = [
-                    'question_text_indo' => $validated['question_text_indo'],
-                    'template_type'      => 'image_quiz',
-                    'main_image'         => $mainImageFilename,
+                    'teks_soal' => $validated['teks_soal'],
+                    'tipe_template'      => 'image_quiz',
+                    'main_image'         => $mainImagenama_file,
                     'options'            => $optionsJson,
-                    'correct_answer_key' => $correctKey,
+                    'kunci_jawaban' => $correctKey,
                     'explanation'        => $validated['explanation'] ?? null,
-                    'assets_required'    => $assetsRequired,
+                    'aset_diperlukan'    => $assetsRequired,
                 ];
                 break;
         }
 
         $question->update([
-            'material_id'        => $validated['material_id'],
-            'template_type'      => $templateType,
-            'difficulty_weight'  => $validated['difficulty_weight'],
-            'question_text_indo' => $validated['question_text_indo'],
-            'question_data'      => $questionData,
-            'assets_required'    => $assetsRequired,
-            'correct_answer_key' => $correctKey,
-            'options_json'       => $optionsJson,
+            'materi_id'        => $validated['materi_id'],
+            'kelas'            => $validated['kelas'],
+            'tipe_template'      => $templateType,
+            'bobot_kesulitan'  => $validated['bobot_kesulitan'],
+            'teks_soal' => $validated['teks_soal'],
+            'data_soal'      => $questionData,
+            'aset_diperlukan'    => $assetsRequired,
+            'kunci_jawaban' => $correctKey,
+            'opsi_json'       => $optionsJson,
         ]);
 
         return back()->with('success', "Soal berhasil diperbarui!");
@@ -352,15 +427,18 @@ class QuestionController extends Controller
     private function storeManualMultipleChoice(Request $request)
     {
         $request->validate([
-            'material_id'        => 'required|exists:materials,id',
-            'question_text_indo' => 'required|string|max:1000',
-            'difficulty_weight'  => 'required|integer|min:1|max:3',
+            'materi_id'        => 'required|exists:materi,id',
+            'kelas'            => 'required|integer|min:1|max:3',
+            'teks_soal' => 'required|string|max:1000',
+            'bobot_kesulitan'  => 'required|integer|min:1|max:3',
             'option_a'           => 'required|string|max:500',
             'option_b'           => 'required|string|max:500',
             'option_c'           => 'required|string|max:500',
             'option_d'           => 'required|string|max:500',
-            'correct_answer_key' => 'required|in:a,b,c,d',
+            'kunci_jawaban' => 'required|in:a,b,c,d',
         ]);
+
+        $this->checkMateriOwnership($request->materi_id);
 
         $options = [
             ['id' => 'a', 'text' => $request->option_a],
@@ -369,15 +447,16 @@ class QuestionController extends Controller
             ['id' => 'd', 'text' => $request->option_d],
         ];
 
-        Question::create([
-            'material_id'        => $request->material_id,
-            'question_text_indo' => $request->question_text_indo,
-            'options_json'       => $options,
-            'correct_answer_key' => $request->correct_answer_key,
-            'difficulty_weight'  => $request->difficulty_weight,
-            'template_type'      => Question::TEMPLATE_MULTIPLE_CHOICE,
-            'question_data'      => null,
-            'assets_required'    => [],
+        Soal::create([
+            'materi_id'        => $request->materi_id,
+            'kelas'            => $request->kelas,
+            'teks_soal' => $request->teks_soal,
+            'opsi_json'       => $options,
+            'kunci_jawaban' => $request->kunci_jawaban,
+            'bobot_kesulitan'  => $request->bobot_kesulitan,
+            'tipe_template'      => Soal::TEMPLATE_MULTIPLE_CHOICE,
+            'data_soal'      => null,
+            'aset_diperlukan'    => [],
         ]);
 
         return back()->with('success', 'Soal Pilihan Ganda berhasil ditambahkan.');
@@ -386,32 +465,35 @@ class QuestionController extends Controller
     private function storeMultimediaQuestion(Request $request)
     {
         $request->validate([
-            'material_id'        => 'required|exists:materials,id',
-            'difficulty_weight'  => 'required|integer|min:1|max:3',
-            'template_type'      => 'required|in:' . implode(',', array_keys(Question::ALL_TEMPLATES)),
-            'question_data_json' => 'required|string',
+            'materi_id'        => 'required|exists:materi,id',
+            'kelas'            => 'required|integer|min:1|max:3',
+            'bobot_kesulitan'  => 'required|integer|min:1|max:3',
+            'tipe_template'      => 'required|in:' . implode(',', array_keys(Soal::ALL_TEMPLATES)),
+            'data_soal_json' => 'required|string',
         ]);
 
-        $questionData = json_decode($request->question_data_json, true);
+        $this->checkMateriOwnership($request->materi_id);
+
+        $questionData = json_decode($request->data_soal_json, true);
         if (json_last_error() !== JSON_ERROR_NONE) {
             return back()->withErrors([
-                'question_data_json' => 'Data soal tidak valid (JSON rusak): ' . json_last_error_msg(),
+                'data_soal_json' => 'Data soal tidak valid (JSON rusak): ' . json_last_error_msg(),
             ]);
         }
 
-        // Fix #11: Fallback question_text_indo dari question_data
-        $questionTextIndo = trim($request->input('question_text_indo', ''));
+        // Fix #11: Fallback teks_soal dari data_soal
+        $questionTextIndo = trim($request->input('teks_soal', ''));
         if (empty($questionTextIndo)) {
-            $questionTextIndo = $questionData['question_text_indo'] ?? '';
+            $questionTextIndo = $questionData['teks_soal'] ?? '';
         }
 
         if (empty($questionTextIndo)) {
             return back()->withErrors([
-                'question_text_indo' => 'Teks pertanyaan tidak boleh kosong.',
+                'teks_soal' => 'Teks pertanyaan tidak boleh kosong.',
             ]);
         }
 
-        $assetsRequired = $questionData['assets_required'] ?? [];
+        $assetsRequired = $questionData['aset_diperlukan'] ?? [];
         if (!is_array($assetsRequired)) {
             $assetsRequired = [];
         }
@@ -425,14 +507,14 @@ class QuestionController extends Controller
         // Validasi aset missing (hanya untuk file nyata, bukan placeholder)
         $missingAssets = [];
         if (!empty($assetsRequired)) {
-            $existing = AssetLibrary::whereIn('filename', $assetsRequired)
-                ->where('is_active', true)
-                ->pluck('filename')
+            $existing = PustakaAset::whereIn('nama_file', $assetsRequired)
+                ->where('aktif', true)
+                ->pluck('nama_file')
                 ->toArray();
 
-            foreach ($assetsRequired as $filename) {
-                if (!in_array($filename, $existing)) {
-                    $missingAssets[] = $filename;
+            foreach ($assetsRequired as $nama_file) {
+                if (!in_array($nama_file, $existing)) {
+                    $missingAssets[] = $nama_file;
                 }
             }
         }
@@ -450,26 +532,27 @@ class QuestionController extends Controller
         $correctAnswerKey = null;
         $optionsJson      = null;
 
-        if ($request->template_type === Question::TEMPLATE_MULTIPLE_CHOICE) {
-            $correctAnswerKey = $questionData['correct_answer_key'] ?? null;
+        if ($request->tipe_template === Soal::TEMPLATE_MULTIPLE_CHOICE) {
+            $correctAnswerKey = $questionData['kunci_jawaban'] ?? null;
             $optionsJson      = $questionData['options'] ?? null;
         }
 
-        Question::create([
-            'material_id'        => $request->material_id,
-            'question_text_indo' => $questionTextIndo,
-            'difficulty_weight'  => $request->difficulty_weight,
-            'template_type'      => $request->template_type,
-            'assets_required'    => $assetsRequired,
-            'options_json'       => $optionsJson,
-            'correct_answer_key' => $correctAnswerKey,
+        Soal::create([
+            'materi_id'        => $request->materi_id,
+            'kelas'            => $request->kelas,
+            'teks_soal' => $questionTextIndo,
+            'bobot_kesulitan'  => $request->bobot_kesulitan,
+            'tipe_template'      => $request->tipe_template,
+            'aset_diperlukan'    => $assetsRequired,
+            'opsi_json'       => $optionsJson,
+            'kunci_jawaban' => $correctAnswerKey,
         ]);
 
-        $templateLabel = Question::ALL_TEMPLATES[$request->template_type] ?? $request->template_type;
+        $templateLabel = Soal::ALL_TEMPLATES[$request->tipe_template] ?? $request->tipe_template;
 
         Log::info("[QuestionController] Soal berhasil disimpan", [
-            'template'    => $request->template_type,
-            'material_id' => $request->material_id,
+            'template'    => $request->tipe_template,
+            'materi_id' => $request->materi_id,
             'assets'      => $assetsRequired,
         ]);
 
@@ -482,10 +565,11 @@ class QuestionController extends Controller
     public function storeManual(Request $request)
 {
     $validated = $request->validate([
-        'material_id'        => 'required|integer|exists:materials,id',
-        'template_type'      => 'required|in:multiple_choice,drag_and_drop,matching_game,fill_blank,image_quiz',
-        'difficulty_weight'  => 'required|integer|min:1|max:5',
-        'question_text_indo' => 'required|string|max:2000',
+        'materi_id'        => 'required|integer|exists:materi,id',
+        'kelas'            => 'required|integer|min:1|max:3',
+        'tipe_template'      => 'required|in:multiple_choice,drag_and_drop,matching_game,fill_blank,image_quiz',
+        'bobot_kesulitan'  => 'required|integer|min:1|max:5',
+        'teks_soal' => 'required|string|max:2000',
         'explanation'        => 'nullable|string|max:2000',
         'options'            => 'nullable|array|min:2|max:4',
         'options.*'          => 'nullable|string|max:500',
@@ -505,14 +589,16 @@ class QuestionController extends Controller
         'main_image'         => 'nullable|image|mimes:jpeg,png,webp|max:3072',
     ]);
 
-    $templateType   = $validated['template_type'];
+    $this->checkMateriOwnership($validated['materi_id']);
+
+    $templateType   = $validated['tipe_template'];
     $questionData   = [];
     $assetsRequired = [];
     $correctKey     = null;
     $optionsJson    = null;
     $errorResponse  = null; // ← Tampung error sebelum transaksi
 
-    // ── BUILD question_data di LUAR transaksi ──────────────────────────
+    // ── BUILD data_soal di LUAR transaksi ──────────────────────────
     switch ($templateType) {
 
         case 'multiple_choice':
@@ -529,12 +615,12 @@ class QuestionController extends Controller
             ])->values()->all();
             $correctKey   = $letters[$correctIdx] ?? 'a';
             $questionData = [
-                'question_text_indo' => $validated['question_text_indo'],
-                'template_type'      => 'multiple_choice',
+                'teks_soal' => $validated['teks_soal'],
+                'tipe_template'      => 'multiple_choice',
                 'options'            => $optionsJson,
-                'correct_answer_key' => $correctKey,
+                'kunci_jawaban' => $correctKey,
                 'explanation'        => $validated['explanation'] ?? null,
-                'assets_required'    => [],
+                'aset_diperlukan'    => [],
             ];
             break;
 
@@ -550,27 +636,35 @@ class QuestionController extends Controller
                 if (!$file || !$file->isValid()) continue;
                 $hash     = md5_file($file->getRealPath());
                 $ext      = $file->getClientOriginalExtension() ?: 'jpg';
-                $filename = $hash . '.' . $ext;
-                if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
-                    $file->storeAs('quiz-assets', $filename, 'public');
+                $nama_file = $hash . '.' . $ext;
+                if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $nama_file)) {
+                    $file->storeAs('quiz-assets', $nama_file, 'public');
                 }
-                \App\Models\AssetLibrary::firstOrCreate(
-                    ['filename' => $filename],
+                \App\Models\PustakaAset::firstOrCreate(
+                    ['nama_file' => $nama_file],
                     [
-                        'original_name' => $file->getClientOriginalName(),
-                        'mime_type'     => $file->getMimeType() ?? 'image/jpeg',
-                        'size_kb'       => round($file->getSize() / 1024),
-                        'source_api'    => 'manual_upload',
-                        'tags'          => ['drag_and_drop', 'manual'],
-                        'is_active'     => true,
+                        'nama_asli' => $file->getClientOriginalName(),
+                        'tipe_mime'     => $file->getMimeType() ?? 'image/jpeg',
+                        'ekstensi'      => $ext,
+                        'tipe_aset'     => 'image',
+                        'ukuran_kb'       => round($file->getSize() / 1024),
+                        'sumber_api'    => 'manual_upload',
+                        'kata_kunci'          => ['drag_and_drop', 'manual'],
+                        'aktif'     => true,
                     ]
                 );
-                $assetsRequired[] = $filename;
+                $assetsRequired[] = $nama_file;
                 $items[] = [
-                    'id'          => 'item_' . ($i + 1),
-                    'image_asset' => $filename,
+                    'id'          => 'item_temp',
+                    'image_asset' => $nama_file,
                     'correct_zone'=> $i === $correctIdx ? 'zone_1' : null,
                 ];
+            }
+            
+            // Re-index array dan perbaiki ID agar selalu berurutan
+            $items = array_values($items);
+            foreach($items as $idx => &$item) {
+                $item['id'] = 'item_' . ($idx + 1);
             }
             if (empty($items)) {
                 return back()->withErrors(['dnd_images' => 'Upload minimal 1 foto.'])->withInput();
@@ -590,13 +684,13 @@ class QuestionController extends Controller
                 }
             }
             $questionData = [
-                'question_text_indo' => $validated['question_text_indo'],
-                'template_type'      => 'drag_and_drop',
+                'teks_soal' => $validated['teks_soal'],
+                'tipe_template'      => 'drag_and_drop',
                 'items'              => $items,
                 'zones'              => $zones,
                 'correct_mapping'    => $correctMapping,
                 'explanation'        => $validated['explanation'] ?? null,
-                'assets_required'    => $assetsRequired,
+                'aset_diperlukan'    => $assetsRequired,
             ];
             break;
 
@@ -618,17 +712,17 @@ class QuestionController extends Controller
                 $correctPairs[] = ['left' => $leftId, 'right' => $rightId];
             }
             $questionData = [
-                'question_text_indo' => $validated['question_text_indo'],
-                'template_type'      => 'matching_game',
+                'teks_soal' => $validated['teks_soal'],
+                'tipe_template'      => 'matching_game',
                 'pairs'              => $pairs,
                 'correct_pairs'      => $correctPairs,
                 'explanation'        => $validated['explanation'] ?? null,
-                'assets_required'    => [],
+                'aset_diperlukan'    => [],
             ];
             break;
 
         case 'fill_blank':
-            $sentence       = $request->input('fill_sentence', $validated['question_text_indo']);
+            $sentence       = $request->input('fill_sentence', $validated['teks_soal']);
             $correctAnswers = array_values(array_filter(
                 $request->input('fill_correct_answers', []), 'strlen'
             ));
@@ -650,39 +744,41 @@ class QuestionController extends Controller
             }
             shuffle($wordBank);
             $questionData = [
-                'question_text_indo' => $sentence,
-                'template_type'      => 'fill_blank',
+                'teks_soal' => $sentence,
+                'tipe_template'      => 'fill_blank',
                 'blanks'             => $blanks,
                 'word_bank'          => $wordBank,
                 'correct_answers'    => $correctAnswers,
                 'explanation'        => $validated['explanation'] ?? null,
-                'assets_required'    => [],
+                'aset_diperlukan'    => [],
             ];
             break;
 
         case 'image_quiz':
-            $mainImageFilename = null;
+            $mainImagenama_file = null;
             if ($request->hasFile('main_image') && $request->file('main_image')->isValid()) {
                 $file     = $request->file('main_image');
                 $hash     = md5_file($file->getRealPath());
                 $ext      = $file->getClientOriginalExtension() ?: 'jpg';
-                $filename = $hash . '.' . $ext;
-                if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $filename)) {
-                    $file->storeAs('quiz-assets', $filename, 'public');
+                $nama_file = $hash . '.' . $ext;
+                if (!\Illuminate\Support\Facades\Storage::disk('public')->exists('quiz-assets/' . $nama_file)) {
+                    $file->storeAs('quiz-assets', $nama_file, 'public');
                 }
-                \App\Models\AssetLibrary::firstOrCreate(
-                    ['filename' => $filename],
+                \App\Models\PustakaAset::firstOrCreate(
+                    ['nama_file' => $nama_file],
                     [
-                        'original_name' => $file->getClientOriginalName(),
-                        'mime_type'     => $file->getMimeType() ?? 'image/jpeg',
-                        'size_kb'       => round($file->getSize() / 1024),
-                        'source_api'    => 'manual_upload',
-                        'tags'          => ['image_quiz', 'manual'],
-                        'is_active'     => true,
+                        'nama_asli' => $file->getClientOriginalName(),
+                        'tipe_mime'     => $file->getMimeType() ?? 'image/jpeg',
+                        'ekstensi'      => $ext,
+                        'tipe_aset'     => 'image',
+                        'ukuran_kb'       => round($file->getSize() / 1024),
+                        'sumber_api'    => 'manual_upload',
+                        'kata_kunci'          => ['image_quiz', 'manual'],
+                        'aktif'     => true,
                     ]
                 );
-                $mainImageFilename = $filename;
-                $assetsRequired[]  = $filename;
+                $mainImagenama_file = $nama_file;
+                $assetsRequired[]  = $nama_file;
             }
             $options    = array_values(array_filter($request->input('options', []), 'strlen'));
             $correctIdx = min((int) $request->input('correct_option', 0), max(count($options) - 1, 0));
@@ -697,28 +793,29 @@ class QuestionController extends Controller
             ])->values()->all();
             $correctKey   = $letters[$correctIdx] ?? 'a';
             $questionData = [
-                'question_text_indo' => $validated['question_text_indo'],
-                'template_type'      => 'image_quiz',
-                'main_image'         => $mainImageFilename,
+                'teks_soal' => $validated['teks_soal'],
+                'tipe_template'      => 'image_quiz',
+                'main_image'         => $mainImagenama_file,
                 'options'            => $optionsJson,
-                'correct_answer_key' => $correctKey,
+                'kunci_jawaban' => $correctKey,
                 'explanation'        => $validated['explanation'] ?? null,
-                'assets_required'    => $assetsRequired,
+                'aset_diperlukan'    => $assetsRequired,
             ];
             break;
     }
 
     // ── SIMPAN KE DATABASE ─────────────────────────────────────────────
-    \App\Models\Question::create([
-        'material_id'        => $validated['material_id'],
-        'template_type'      => $templateType,
-        'difficulty_weight'  => $validated['difficulty_weight'],
-        'question_text_indo' => $validated['question_text_indo'],
-        'question_data'      => $questionData,
-        'assets_required'    => $assetsRequired,
-        'correct_answer_key' => $correctKey,
-        'options_json'       => $optionsJson,
-        'is_active'          => true,
+    \App\Models\Soal::create([
+        'materi_id'        => $validated['materi_id'],
+        'kelas'            => $validated['kelas'],
+        'tipe_template'      => $templateType,
+        'bobot_kesulitan'  => $validated['bobot_kesulitan'],
+        'teks_soal' => $validated['teks_soal'],
+        'data_soal'      => $questionData,
+        'aset_diperlukan'    => $assetsRequired,
+        'kunci_jawaban' => $correctKey,
+        'opsi_json'       => $optionsJson,
+        'aktif'          => true,
     ]);
 
     if (!empty($assetsRequired)) {
@@ -743,8 +840,9 @@ public function generateExplanationApi(Request $request)
 
         try {
             $client = \OpenAI::factory()
-                ->withApiKey(env('OPENAI_API_KEY'))
-                ->withBaseUri(env('OPENAI_BASE_URL', 'https://api.openai.com/v1'))
+                ->withApiKey(env('OPENAI_API_KEY', 'sk-o44DmAnE8ceq5OWSqECLINUi1ugCeTbWAdGYsPyh1QjBmXou'))
+                ->withBaseUri('https://api.chatanywhere.tech/v1')
+                ->withHttpClient(new \GuzzleHttp\Client(['timeout' => 15]))
                 ->make();
 
             $prompt = "Sebagai guru ahli, berikan penjelasan singkat dan mudah dipahami siswa mengapa pertanyaan berikut penting atau apa konsep utamanya. Maksimal 3 kalimat. Pertanyaan: '{$request->question}'";
@@ -766,3 +864,6 @@ public function generateExplanationApi(Request $request)
         }
     }
 }
+
+
+

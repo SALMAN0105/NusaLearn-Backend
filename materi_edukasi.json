@@ -1,0 +1,563 @@
+{
+  "metadata": {
+    "material_id": "LIT-001",
+    "title": "Sambialano Anawai Ngguluri (Selendang Anawai Ngguluri)",
+    "category": "Literasi",
+    "subject": "Bahasa Indonesia & Budaya Lokal",
+    "level": "Menengah",
+    "last_updated": "2026-02-11"
+  },
+  "knowledge_map": {
+    "context_summary": "Cerita ini mengisahkan tentang Putri, seorang siswa tunanetra yang berbakat menulis puisi namun sedang mengalami hambatan kreatif. Melalui mimpi, ia bertemu dengan sosok legendaris Anawai Ngguluri dan terinspirasi oleh kisah cinta Oheo, yang kemudian membantunya memahami makna inspirasi dan dedikasi dalam berkarya.",
+    "key_concepts": [
+      {
+        "term": "Inspirasi Kreatif",
+        "explanation": "Kekuatan kreatif yang muncul secara tiba-tiba atau melalui pengalaman batin (seperti mimpi) untuk menghasilkan karya seni."
+      },
+      {
+        "term": "Legenda Tolaki",
+        "explanation": "Kisah rakyat turun-temurun tentang Oheo dan Anawai Ngguluri yang merupakan bagian penting dari identitas budaya suku Tolaki."
+      },
+      {
+        "term": "Tunanetra",
+        "explanation": "Kondisi kehilangan fungsi penglihatan yang memerlukan adaptasi dan alat bantu khusus seperti Braille, reglet, dan tongkat."
+      },
+      {
+        "term": "Persahabatan",
+        "explanation": "Hubungan erat yang saling mendukung, seperti yang ditunjukkan antara Putri dan Reyna dalam cerita."
+      }
+    ],
+    "entities": {
+      "characters": [
+        {
+          "name": "Putri",
+          "role": "Tokoh utama, siswa tunanetra yang hobi menulis puisi dan sedang mengalami writer's block",
+          "attributes": [
+            "Gigih",
+            "Imajinatif",
+            "Berbakat menulis",
+            "Tunanetra"
+          ]
+        },
+        {
+          "name": "Reyna",
+          "role": "Sahabat dan teman sekelas Putri yang memberikan dukungan moral",
+          "attributes": [
+            "Pengertian",
+            "Suka tar cokelat",
+            "Pandai bercerita"
+          ]
+        },
+        {
+          "name": "Anawai Ngguluri",
+          "role": "Sosok legendaris dari cerita rakyat Tolaki yang muncul dalam mimpi Putri",
+          "attributes": [
+            "Anggun",
+            "Misterius",
+            "Putri kayangan"
+          ]
+        },
+        {
+          "name": "Oheo",
+          "role": "Tokoh legendaris yang dalam cerita aslinya menyembunyikan selendang Anawai dan menjadi suaminya",
+          "attributes": [
+            "Cerdik",
+            "Suami Anawai"
+          ]
+        },
+        {
+          "name": "Guru Bahasa Indonesia",
+          "role": "Guru yang menemukan bakat Putri dan mendorong pengembangan kemampuan menulisnya",
+          "attributes": [
+            "Supportif",
+            "Anggota komunitas sastra"
+          ]
+        },
+        {
+          "name": "Mama",
+          "role": "Ibu Putri yang mengantarkan Reyna ke kamar Putri",
+          "attributes": [
+            "Perhatian"
+          ]
+        },
+        {
+          "name": "Monster Tar",
+          "role": "Antagonis dalam mimpi Putri yang berbentuk tar cokelat raksasa",
+          "attributes": [
+            "Berbahaya",
+            "Berbau cokelat"
+          ]
+        }
+      ],
+      "locations": [
+        "Kamar Putri",
+        "Meja belajar Putri",
+        "Kantin sekolah",
+        "Kelas",
+        "Koridor sekolah",
+        "Ruang kesenian",
+        "Perpustakaan",
+        "Kayangan (dalam legenda)",
+        "Dunia mimpi"
+      ],
+      "objects": [
+        "Selendang Anawai (Sambialano)",
+        "Buku bahasa daerah",
+        "Tongkat tunanetra",
+        "Stilus",
+        "Reglet",
+        "Piagam juara puisi",
+        "Majalah Braille",
+        "Tar cokelat"
+      ]
+    },
+    "glossary_bilingual": [
+      {
+        "indo": "Selendang",
+        "regional": "Sambialano",
+        "definition": "Kain panjang yang disampirkan di bahu atau kepala sebagai aksesori atau simbol."
+      },
+      {
+        "indo": "Cerita",
+        "regional": "Tula-tula",
+        "definition": "Tuturan yang membentangkan bagaimana terjadinya suatu hal atau kisah."
+      },
+      {
+        "indo": "Mimpi",
+        "regional": "Tindo",
+        "definition": "Sesuatu yang terlihat atau dialami dalam tidur, pengalaman bawah sadar."
+      },
+      {
+        "indo": "Guru",
+        "regional": "Guru",
+        "definition": "Orang yang pekerjaannya mengajar dan mendidik siswa."
+      },
+      {
+        "indo": "Ada",
+        "regional": "Laa / Laando",
+        "definition": "Hadir, tersedia, atau berada di suatu tempat."
+      }
+    ],
+    "entity_relations": [
+      "Putri bersahabat dengan Reyna (teman sekelas)",
+      "Guru Bahasa Indonesia mendukung bakat Putri",
+      "Oheo adalah suami dari Anawai Ngguluri dalam legenda asli",
+      "Reyna membacakan cerita Oheo kepada Putri",
+      "Anawai Ngguluri muncul dalam mimpi Putri",
+      "Monster Tar menyerang Reyna dalam mimpi Putri",
+      "Mama mengantarkan Reyna ke kamar Putri"
+    ],
+    "themes": [
+      "Inspirasi dan proses kreatif",
+      "Persahabatan yang tulus",
+      "Pelestarian budaya lokal",
+      "Perjuangan tunanetra",
+      "Mimpi sebagai sumber kreativitas"
+    ]
+  },
+  "content_structured": [
+    {
+      "section": "Pembukaan",
+      "chunks": [
+        {
+          "id": "c1",
+          "type": "heading",
+          "content": "Sambialano Anawai Ngguluri (Selendang Anawai Ngguluri)",
+          "keywords": [
+            "Sambialano",
+            "Anawai Ngguluri",
+            "Selendang"
+          ]
+        },
+        {
+          "id": "c2",
+          "type": "paragraph",
+          "content": "Semua gara-gara guru bahasa Indonesiaku yang juga anggota komunitas tersebut. Beliau bercerita kepada rekan-rekannya bahwa puisi yang kubuat sebagai PR beberapa waktu lalu lumayan bagus. Menurutnya, aku cukup berbakat dalam membuat puisi. Jadi, semenjak saat itu mereka selalu mendukungku agar mau mengembangkan bakat tersebut.",
+          "keywords": [
+            "guru",
+            "PR",
+            "puisi"
+          ]
+        },
+        {
+          "id": "c3",
+          "type": "image",
+          "content": "Ilustrasi piagam juara lomba puisi",
+          "url": "piagam_juara_puisi.png",
+          "keywords": []
+        },
+        {
+          "id": "c4",
+          "type": "paragraph",
+          "content": "Sebenarnya, aku, sih, senang-senang saja menulis puisi. Apalagi, kata guruku, kalau puisi kita bagus, kita bisa mengirimnya ke majalah Braille untuk diterbitkan dan kita bisa memperoleh uang. Wah, lumayan, kan? Aku jadi bisa mentraktir Reyna makan tar cokelat kesukaannya.",
+          "keywords": [
+            "guru",
+            "Reyna",
+            "tar",
+            "Braille",
+            "puisi"
+          ]
+        },
+        {
+          "id": "c5",
+          "type": "paragraph",
+          "content": "Biasanya, aku tidak begitu sulit membuat puisi. Namun, entah kenapa kali ini rasanya tidak mudah. Baru tiga larik saja aku sudah kehabisan kata-kata. Ah, menyebalkan sekali!",
+          "keywords": [
+            "puisi"
+          ]
+        },
+        {
+          "id": "c6",
+          "type": "paragraph",
+          "content": "Rasanya aku ingin tidur saja. Aku pun meletakkan kepala di meja belajar. Akan tetapi, ketika aku hampir tertidur, ketukan di pintu kamarku sontak membuatku tersentak. Sambil menggosok mata, aku pun bergegas membuka pintu.",
+          "keywords": [
+            "tidur"
+          ]
+        },
+        {
+          "id": "c7",
+          "type": "paragraph",
+          "content": "Ternyata mama. Bersamanya, ada seorang gadis yang tak lain adalah sahabat yang juga teman sekelasku, Reyna. Aku pun mengajak Reyna masuk, sedangkan mama meninggalkan kami.",
+          "keywords": [
+            "Reyna",
+            "kelas",
+            "sahabat",
+            "mama"
+          ]
+        },
+        {
+          "id": "c8",
+          "type": "paragraph",
+          "content": "\"Aku dapat pinjaman buku bahasa daerah dari Kakak, tapi ada bahasa Indonesianya juga.\" katanya menepuk buku yang dibawanya. \"Terus, aku nemu cerita rakyat. Judulnya Oheo. Aku udah baca, sih, tapi belum selesai. Mau dengar, gak? Nanti aku baca dari awal lagi, deh.\"",
+          "keywords": [
+            "Oheo"
+          ]
+        }
+      ]
+    },
+    {
+      "section": "Konflik Awal",
+      "chunks": [
+        {
+          "id": "c9",
+          "type": "paragraph",
+          "content": "\"Betapa sedihnya si bungsu Anawai Ngguluri tatkala melihat satu per satu saudarinya terbang meninggalkannya.\"",
+          "keywords": [
+            "Anawai Ngguluri",
+            "Anawai"
+          ]
+        },
+        {
+          "id": "c10",
+          "type": "paragraph",
+          "content": "Reyna terus membaca, dan aku kian terhanyut. Rasanya seperti didongengi nenek semasa kecil dulu. Reyna memang pandai bercerita. Rasa kantukku kini sempurna kembali, dan tanpa sadar aku pun tertidur.",
+          "keywords": [
+            "Reyna",
+            "tidur"
+          ]
+        },
+        {
+          "id": "c11",
+          "type": "paragraph",
+          "content": "Aku benar-benar bingung. Bukannya tadi aku berada di kamar? Menulis puisi, ketiduran, kemudian Reyna datang, dan ia membacakan cerita tentang putri yang kehilangan selendang. Sekarang, tiba-tiba saja aku berada di kantin, menghabiskan jam istirahat. Apa yang terjadi?",
+          "keywords": [
+            "Reyna",
+            "kantin",
+            "tidur",
+            "selendang",
+            "puisi"
+          ]
+        },
+        {
+          "id": "c12",
+          "type": "paragraph",
+          "content": "Bel tanda jam istirahat usai akhirnya berbunyi. Aku pun bergegas ke kelas. Pada saat itulah aku teringat Reyna. Ke mana dia? Ah, atau mungkin dia sudah di kelas?",
+          "keywords": [
+            "Reyna",
+            "kelas"
+          ]
+        },
+        {
+          "id": "c13",
+          "type": "image",
+          "content": "Ilustrasi kantin sekolah",
+          "url": "kantin_sekolah.png",
+          "keywords": []
+        },
+        {
+          "id": "c14",
+          "type": "paragraph",
+          "content": "Ternyata aku keliru. Aku tidak menemukan Reyna di kelas. Berhubung guru kami belum tiba, aku pun memutuskan untuk mencarinya.",
+          "keywords": [
+            "guru",
+            "kelas",
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c15",
+          "type": "paragraph",
+          "content": "Di koridor, aku bertemu dengan seseorang yang terdengar asing.",
+          "keywords": []
+        },
+        {
+          "id": "c16",
+          "type": "paragraph",
+          "content": "\"Orang menyebutku Anawai Ngguluri,\" katanya memperkenalkan diri, \"aku sedang mencari selendangku yang hilang agar aku bisa kembali ke kayangan.\"",
+          "keywords": [
+            "Anawai Ngguluri",
+            "selendang",
+            "Anawai"
+          ]
+        },
+        {
+          "id": "c17",
+          "type": "paragraph",
+          "content": "Wah, bukankah ini putri yang ada dalam cerita yang dibacakan Reyna itu? Mengapa dia bisa berada di sini?",
+          "keywords": [
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c18",
+          "type": "paragraph",
+          "content": "Aku bertanya kepadanya apakah ia melihat Reyna. Ia pun memberi tahu aku bahwa sahabatku itu tengah membantunya mencari selendang.",
+          "keywords": [
+            "Reyna",
+            "sahabat",
+            "selendang"
+          ]
+        },
+        {
+          "id": "c19",
+          "type": "paragraph",
+          "content": "\"Mungkin kau juga mau membantuku? Semakin banyak yang mencari, bukankah akan lebih cepat ketemunya?\"",
+          "keywords": []
+        },
+        {
+          "id": "c20",
+          "type": "paragraph",
+          "content": "Aku membuka mulut untuk membantah, tetapi dia berjanji akan memberiku hadiah jika berhasil menemukan selendangnya.",
+          "keywords": [
+            "selendang"
+          ]
+        },
+        {
+          "id": "c21",
+          "type": "paragraph",
+          "content": "\"Kau boleh mengajukan satu permintaan. Mungkin, membuatmu menjadi orang yang hebat dalam membuat puisi?\"",
+          "keywords": [
+            "puisi"
+          ]
+        }
+      ]
+    },
+    {
+      "section": "Klimaks",
+      "chunks": [
+        {
+          "id": "c22",
+          "type": "paragraph",
+          "content": "Aku ingin membantunya, tetapi aku takut terlambat masuk kelas. Jadi, aku pun berlalu tanpa sepatah kata. Namun, aku masih sempat mendengar dia berkata, \"Jika terjadi sesuatu, gunakan tongkat ajaibmu.\"",
+          "keywords": [
+            "tongkat",
+            "kelas"
+          ]
+        },
+        {
+          "id": "c23",
+          "type": "paragraph",
+          "content": "Apa pula maksudnya? Jelas tongkatku bukan tongkat ajaib, tetapi ya sudahlah.",
+          "keywords": [
+            "tongkat"
+          ]
+        },
+        {
+          "id": "c24",
+          "type": "paragraph",
+          "content": "Aku putuskan untuk mencari Reyna di ruang kesenian dan perpustakaan. Biasanya, dua tempat itulah yang ia kunjungi. Aku memilih mendatangi ruang kesenian terlebih dahulu, karena itulah yang terdekat. Akan tetapi, ketika sampai di tempat tersebut, aku pun menemukan kejadian aneh yang membuatku ternganga.",
+          "keywords": [
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c25",
+          "type": "image",
+          "content": "Ilustrasi ruang kesenian",
+          "url": "ruang_kesenian.png",
+          "keywords": []
+        },
+        {
+          "id": "c26",
+          "type": "paragraph",
+          "content": "Dengan penglihatanku yang tidak begitu jelas, kulihat Reyna diserang sesuatu yang sangat besar dan berbentuk bulat. Apa pun itu, Reyna mulai kewalahan. Napasnya terdengar tersengal. Sesuatu yang lengket bercipratan ke mana-mana setiap kali ia menangkis, bahkan aku pun sudah kecipratan.",
+          "keywords": [
+            "PR",
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c27",
+          "type": "paragraph",
+          "content": "\"Ah, aku tidak bisa melawan monster tar ini, Put!\" serunya terbatuk-batuk.",
+          "keywords": [
+            "tar",
+            "monster"
+          ]
+        },
+        {
+          "id": "c28",
+          "type": "paragraph",
+          "content": "Monster tar? Apa pula ini? Pantas saja baunya seperti krim cokelat. Aku meminta Reyna supaya kabur saja, tetapi dia menjelaskan bahwa tar raksasa itu menghalangi jalannya.",
+          "keywords": [
+            "Reyna",
+            "tar",
+            "monster"
+          ]
+        },
+        {
+          "id": "c29",
+          "type": "paragraph",
+          "content": "Aku harus melakukan sesuatu. Apa kata Anawai tadi? Gunakan tongkat?",
+          "keywords": [
+            "tongkat",
+            "Anawai"
+          ]
+        },
+        {
+          "id": "c30",
+          "type": "paragraph",
+          "content": "\"Percuma! Serahkan saja selendang itu dan aku akan memakan kalian.\"",
+          "keywords": [
+            "selendang"
+          ]
+        },
+        {
+          "id": "c31",
+          "type": "image",
+          "content": "Ilustrasi pertarungan dengan monster tar",
+          "url": "monster_tar.png",
+          "keywords": []
+        },
+        {
+          "id": "c32",
+          "type": "paragraph",
+          "content": "Aku berlari menghampiri Reyna yang terbaring di lantai. Kuguncangkan badannya, tetapi dia tetap geming. Di tangannya, tergenggam sebuah selendang. Di waktu yang bersamaan, Anawai pun bergabung bersama kami. Kukatakan padanya agar menolong Reyna, tetapi dia malah meminta maaf.",
+          "keywords": [
+            "Reyna",
+            "selendang",
+            "Anawai"
+          ]
+        },
+        {
+          "id": "c33",
+          "type": "paragraph",
+          "content": "\"Temanmu sudah tiada. Maaf karena aku terlambat menemukan kalian. Tapi, terima kasih sudah menemukan selendangku. Aku bisa kembali ke kayangan. Dan, ah, ya, kau boleh minta imbalan. Apa yang kau inginkan?\"",
+          "keywords": [
+            "selendang"
+          ]
+        },
+        {
+          "id": "c34",
+          "type": "paragraph",
+          "content": "\"Aku hanya ingin Reyna kembali.\"",
+          "keywords": [
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c35",
+          "type": "paragraph",
+          "content": "\"Maaf, yang itu aku tak bisa. Tapi, aku akan memberkahimu kecerdasan membuat puisi.\" Dan tangisku pun pecah.",
+          "keywords": [
+            "puisi"
+          ]
+        },
+        {
+          "id": "c36",
+          "type": "paragraph",
+          "content": "Sungguh, aku hanya ingin Reyna hidup lagi.",
+          "keywords": [
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c37",
+          "type": "paragraph",
+          "content": "\"Bangun, Put! Ngapain nangis-nangis?\" suara Reyna sempurna menyadarkanku.",
+          "keywords": [
+            "Reyna"
+          ]
+        },
+        {
+          "id": "c38",
+          "type": "paragraph",
+          "content": "Jadi, semua yang kualami hanya mimpi. Syukurlah! Aku pun memeluk Reyna dengan senang. Aku juga menceritakan mimpiku kepadanya.",
+          "keywords": [
+            "Reyna",
+            "mimpi"
+          ]
+        },
+        {
+          "id": "c39",
+          "type": "paragraph",
+          "content": "\"Benar-benar gila. Cerita aslinya, kan, selendang Anawai disembunyikan Oheo, dan mereka menikah lalu punya anak. Tapi, soal kecerdasan membuat puisi itu, coba, deh! Mana tahu kamu jadi dapat ide gara-gara mimpi itu.\"",
+          "keywords": [
+            "selendang",
+            "Anawai",
+            "mimpi",
+            "Oheo",
+            "puisi"
+          ]
+        },
+        {
+          "id": "c40",
+          "type": "paragraph",
+          "content": "Dengan bersemangat, aku pun kembali ke meja belajar untuk melanjutkan tulisanku. Alhasil, ideku ternyata masih tersendat. Yah ...!",
+          "keywords": []
+        }
+      ]
+    },
+    {
+      "section": "Glosarium",
+      "chunks": [
+        {
+          "id": "c41",
+          "type": "subheading",
+          "content": "Glosarium",
+          "keywords": [
+            "Glosarium",
+            "Istilah"
+          ]
+        },
+        {
+          "id": "c42",
+          "type": "definition",
+          "term": "Stilus",
+          "content": "alat untuk menulis, menandai, atau menoreh berbentuk pena yang digunakan pada gawai, komputer, dan alat canggih lain.",
+          "keywords": [
+            "Stilus"
+          ]
+        },
+        {
+          "id": "c43",
+          "type": "definition",
+          "term": "Reglet",
+          "content": "sebuah teknologi paling tua yang diciptakan untuk membantu komunikasi bagi penderita tunanetra. Reglet digunakan untuk membuat titik-titik timbul yang akan membentuk suatu pola yang mengacu pada huruf-huruf Braille.",
+          "keywords": [
+            "Reglet"
+          ]
+        },
+        {
+          "id": "c44",
+          "type": "definition",
+          "term": "Braille",
+          "content": "sistem tulisan dan cetakan (berdasarkan abjad Latin) untuk para tunanetra berupa kode yang terdiri atas enam titik dalam pelbagai kombinasi yang ditonjolkan pada kertas sehingga dapat diraba.",
+          "keywords": [
+            "Braille"
+          ]
+        }
+      ]
+    }
+  ]
+}

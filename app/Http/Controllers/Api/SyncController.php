@@ -7,11 +7,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use App\Models\Material;
-use App\Models\Question;
-use App\Models\StudentProgress;
-use App\Models\AssetLibrary;
-use App\Models\User;
+use App\Models\Materi;
+use App\Models\Soal;
+use App\Models\ProgresSiswa;
+use App\Models\PustakaAset;
+use App\Models\Pengguna;
 
 class SyncController extends Controller
 {
@@ -30,38 +30,39 @@ class SyncController extends Controller
             $user = $request->user();
             
             // Gunakan withTrashed() agar Flutter tahu materi mana yang dihapus (Soft Delete)
-            $query = Material::withTrashed();
+            $query = Materi::withTrashed();
 
             // 1. FILTER REGIONAL & BAHASA (Berdasarkan skema asli DB Anda)
             if ($user) {
                 $query->where(function ($q) use ($user) {
-                    $q->where('school_origin', $user->school_origin)
-                      ->orWhereNull('school_origin')
-                      ->orWhere('school_origin', '')
-                      ->orWhere('language_code', $user->language_code)
-                      ->orWhere('language_code', 'global');
+                    $q->where('asal_sekolah', $user->asal_sekolah)
+                      ->orWhereNull('asal_sekolah')
+                      ->orWhere('asal_sekolah', '')
+                      ->orWhere('kode_bahasa', $user->language_code)
+                      ->orWhere('kode_bahasa', 'global');
                 });
             }
 
             // 2. FILTER DELTA SYNC (Cegah unduh ulang data yang sama)
             if ($request->filled('last_sync')) {
-                $query->where('updated_at', '>', $request->last_sync);
+                $parsedDate = \Carbon\Carbon::parse($request->last_sync)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s');
+                $query->where('diperbarui_pada', '>', $parsedDate);
             }
 
-            $materials = $query->orderBy('updated_at', 'asc')->get();
+            $materials = $query->orderBy('diperbarui_pada', 'asc')->get();
 
             $data = $materials->map(function ($material) {
                 return [
                     'id'               => $material->id,
-                    'title_indo'       => $material->title_indo,
-                    'category'         => $material->category,
-                    'image_url'        => $material->image_url,
-                    'level_difficulty' => $material->level_difficulty,
-                    'language_code'    => $material->language_code,
-                    'content_indo'     => $material->content_indo,
+                    'judul'            => $material->judul,
+                    'kategori'         => $material->kategori,
+                    'url_gambar'       => $material->url_gambar,
+                    'tingkat_kesulitan'=> $material->tingkat_kesulitan,
+                    'kode_bahasa'      => $material->kode_bahasa,
+                    'konten'           => $material->konten,
                     'ai_embeddings'    => $material->ai_embeddings,
-                    'ai_status'        => $material->ai_status,
-                    'updated_at'       => $material->updated_at?->toISOString(),
+                    'status_ai'        => $material->ai_status,
+                    'diperbarui_pada'       => $material->diperbarui_pada?->toISOString(),
                     // Flag status penting agar Flutter SQLite bisa melakukan Delete lokal
                     'status'           => $material->trashed() ? 'deleted' : 'active',
                 ];
@@ -94,39 +95,40 @@ class SyncController extends Controller
             $user = $request->user();
             
             // Gunakan withTrashed() untuk sinkronisasi penghapusan soal
-            $query = Question::withTrashed();
+            $query = Soal::withTrashed();
 
             // 1. FILTER REGIONAL (Hanya unduh soal dari materi sekolah/bahasa siswa)
             if ($user) {
-                $query->whereHas('material', function ($q) use ($user) {
-                    $q->where('school_origin', $user->school_origin)
-                      ->orWhereNull('school_origin')
-                      ->orWhere('school_origin', '')
-                      ->orWhere('language_code', $user->language_code)
-                      ->orWhere('language_code', 'global');
+                $query->whereHas('materi', function ($q) use ($user) {
+                    $q->where('asal_sekolah', $user->asal_sekolah)
+                      ->orWhereNull('asal_sekolah')
+                      ->orWhere('asal_sekolah', '')
+                      ->orWhere('kode_bahasa', $user->language_code)
+                      ->orWhere('kode_bahasa', 'global');
                 });
             }
 
             // 2. FILTER DELTA SYNC
             if ($request->filled('last_sync')) {
-                $query->where('updated_at', '>', $request->last_sync);
+                $parsedDate = \Carbon\Carbon::parse($request->last_sync)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s');
+                $query->where('diperbarui_pada', '>', $parsedDate);
             }
 
-            $questions = $query->orderBy('updated_at', 'asc')->get();
+            $questions = $query->orderBy('diperbarui_pada', 'asc')->get();
 
             $data = $questions->map(function ($question) {
                 return [
                     'id'                   => $question->id,
-                    'material_id'          => $question->material_id,
-                    'question_text_indo'   => $question->question_text_indo,
-                    'question_text_tolaki' => $question->question_text_tolaki,
-                    'options_json'         => $question->options_json,
-                    'correct_answer_key'   => $question->correct_answer_key,
-                    'difficulty_weight'    => $question->difficulty_weight,
-                    'template_type'        => $question->template_type,
-                    'question_data'        => $question->question_data,
-                    'assets_required'      => $question->assets_required,
-                    'updated_at'           => $question->updated_at?->toISOString(),
+                    'materi_id'            => $question->materi_id,
+                    'teks_soal'            => $question->teks_soal,
+                    'question_text_tolaki' => null,
+                    'opsi_json'            => $question->opsi_json,
+                    'kunci_jawaban'        => $question->kunci_jawaban,
+                    'bobot_kesulitan'      => $question->bobot_kesulitan,
+                    'tipe_template'        => $question->tipe_template,
+                    'data_soal'            => $question->data_soal,
+                    'aset_diperlukan'      => $question->aset_diperlukan,
+                    'diperbarui_pada'           => $question->diperbarui_pada?->toISOString(),
                     'status'               => $question->trashed() ? 'deleted' : 'active',
                 ];
             });
@@ -221,15 +223,15 @@ class SyncController extends Controller
         try {
             $request->validate([
                 // Support single answer
-                'question_id'  => 'nullable|integer|exists:questions,id',
-                'answer_data'  => 'nullable|array',
-                'time_spent'   => 'nullable|integer|min:0',
+                'soal_id'      => 'nullable|integer|exists:soal,id',
+                'data_jawaban' => 'nullable',
+                'waktu_detik'  => 'nullable|integer|min:0',
 
                 // Support batch answers
                 'answers'      => 'nullable|array|min:1|max:50',
-                'answers.*.question_id' => 'required_with:answers|integer|exists:questions,id',
-                'answers.*.answer_data' => 'required_with:answers|array',
-                'answers.*.time_spent'  => 'nullable|integer|min:0',
+                'answers.*.soal_id'      => 'required_with:answers|integer|exists:soal,id',
+                'answers.*.data_jawaban' => 'required_with:answers',
+                'answers.*.waktu_detik'  => 'nullable|integer|min:0',
             ]);
 
             $user    = $request->user();
@@ -240,20 +242,20 @@ class SyncController extends Controller
                 foreach ($request->input('answers') as $answerItem) {
                     $result    = $this->processAnswer(
                         $user,
-                        $answerItem['question_id'],
-                        $answerItem['answer_data'],
-                        $answerItem['time_spent'] ?? 0
+                        $answerItem['soal_id'],
+                        $answerItem['data_jawaban'],
+                        $answerItem['waktu_detik'] ?? 0
                     );
                     $results[] = $result;
                 }
             }
             // ── Mode Single ────────────────────────────────────────────
-            elseif ($request->filled('question_id')) {
+            elseif ($request->filled('soal_id')) {
                 $results[] = $this->processAnswer(
                     $user,
-                    $request->input('question_id'),
-                    $request->input('answer_data', []),
-                    $request->input('time_spent', 0)
+                    $request->input('soal_id'),
+                    $request->input('data_jawaban', []),
+                    $request->input('waktu_detik', 0)
                 );
             } else {
                 return response()->json([
@@ -298,7 +300,56 @@ class SyncController extends Controller
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    // SECTION 4: QUIZ STATE
+    // SECTION 4: QUIZ STATE & SYNC DOWN
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * GET /api/sync/progress
+     * Sinkronisasi data progress dari server ke klien (Flutter).
+     */
+    public function syncDownProgress(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            $query = ProgresSiswa::where('pengguna_id', $user->id)
+                ->with('soal:id,material_id');
+
+            if ($request->filled('last_sync')) {
+                $parsedDate = \Carbon\Carbon::parse($request->last_sync)->setTimezone(config('app.timezone'))->format('Y-m-d H:i:s');
+                $query->where('diperbarui_pada', '>', $parsedDate);
+            }
+
+            $progresses = $query->orderBy('diperbarui_pada', 'asc')->get();
+
+            $data = $progresses->map(function ($progress) {
+                return [
+                    'id'                 => $progress->id,
+                    'question_id'        => $progress->question_id,
+                    'material_id'        => $progress->question?->material_id,
+                    'answer_data'        => json_decode($progress->answer_data, true),
+                    'is_correct'         => (bool) $progress->is_correct,
+                    'points_earned'      => $progress->points_earned,
+                    'waktu_detik' => $progress->time_spent_seconds,
+                    'answered_at'        => $progress->answered_at,
+                    'diperbarui_pada'         => $progress->diperbarui_pada?->toISOString(),
+                ];
+            });
+
+            return response()->json([
+                'status'      => 'success',
+                'data'        => $data,
+                'server_time' => now()->toISOString(),
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('[SyncController@syncDownProgress] ' . $e->getMessage());
+            return response()->json([
+                'status'  => 'error',
+                'message' => 'Gagal mengambil progress siswa.',
+            ], 500);
+        }
+    }
     // ═══════════════════════════════════════════════════════════════════
 
     /**
@@ -315,11 +366,11 @@ class SyncController extends Controller
             ]);
 
             $user  = $request->user();
-            $query = StudentProgress::where('user_id', $user->id)
-                ->with('question:id,template_type,material_id,points');
+            $query = ProgresSiswa::where('pengguna_id', $user->id)
+                ->with('soal:id,template_type,material_id,points');
 
             if ($request->filled('material_id')) {
-                $query->whereHas('question', function ($q) use ($request) {
+                $query->whereHas('soal', function ($q) use ($request) {
                     $q->where('material_id', $request->material_id);
                 });
             }
@@ -340,8 +391,8 @@ class SyncController extends Controller
                     'answered_count'   => $items->count(),
                     'correct_count'    => $totalCorrect,
                     'total_points'     => $totalPoints,
-                    'answered_ids'     => $items->pluck('question_id')->toArray(),
-                    'last_answered_at' => $items->max('created_at'),
+                    'answered_ids'     => $items->pluck('soal_id')->toArray(),
+                    'last_answered_at' => $items->max('dibuat_pada'),
                 ];
             })->values();
 
@@ -385,23 +436,23 @@ class SyncController extends Controller
             $materialId = $request->input('material_id');
 
             // Ambil semua progress siswa untuk material ini
-            $progresses = StudentProgress::where('user_id', $user->id)
-                ->whereHas('question', function ($q) use ($materialId) {
+            $progresses = ProgresSiswa::where('pengguna_id', $user->id)
+                ->whereHas('soal', function ($q) use ($materialId) {
                     $q->where('material_id', $materialId);
                 })
-                ->with('question:id,points,template_type')
+                ->with('soal:id,points,template_type')
                 ->get();
 
             // Hitung total soal yang tersedia
-            $totalQuestions = Question::where('material_id', $materialId)
-                ->where('is_active', true)
+            $totalQuestions = Soal::where('materi_id', $materialId)
+                ->where('aktif', true)
                 ->count();
 
             $answeredCount  = $progresses->count();
             $correctCount   = $progresses->where('is_correct', true)->count();
             $totalPoints    = $progresses->sum('points_earned');
-            $maxPoints      = Question::where('material_id', $materialId)
-                ->where('is_active', true)
+            $maxPoints      = Soal::where('materi_id', $materialId)
+                ->where('aktif', true)
                 ->sum('points');
 
             // Hitung grade
@@ -483,12 +534,25 @@ class SyncController extends Controller
     public function checkRegion(Request $request)
     {
         try {
-            $request->validate([
-                'region_name' => 'required|string|max:255',
-            ]);
+            $regionName = $request->input('region_name');
+            $postalCode = $request->input('postal_code') ?? $request->input('kode_pos') ?? $request->input('code');
 
-            $region = \App\Models\Region::where('name', 'like', '%' . $request->region_name . '%')
-                ->first();
+            if (!$regionName && !$postalCode) {
+                return response()->json([
+                    'status'  => 'error',
+                    'message' => 'Parameter region_name atau postal_code wajib diisi.',
+                ], 400);
+            }
+
+            $query = \App\Models\Wilayah::query();
+
+            if ($postalCode) {
+                $query->where('kode_pos', $postalCode);
+            } else {
+                $query->where('nama_kecamatan', 'like', '%' . $regionName . '%');
+            }
+
+            $region = $query->first();
 
             if (!$region) {
                 return response()->json([
@@ -502,9 +566,11 @@ class SyncController extends Controller
                 'status'  => 'success',
                 'message' => 'Region ditemukan.',
                 'data'    => [
-                    'id'   => $region->id,
-                    'name' => $region->name,
-                    'code' => $region->code ?? null,
+                    'id'            => $region->id,
+                    'name'          => $region->nama_kecamatan,
+                    'district'      => $region->nama_kecamatan,
+                    'code'          => $region->kode_pos,
+                    'kode_bahasa' => $region->kode_bahasa,
                 ],
             ]);
 
@@ -529,44 +595,72 @@ class SyncController extends Controller
      * 4. Return result
      */
     private function processAnswer(
-        User $user,
+        Pengguna $user,
         int $questionId,
-        array $answerData,
+        mixed $answerData,
         int $timeSpent = 0
     ): array {
-        $question = Question::findOrFail($questionId);
+        // Normalisasi: jika bukan array, bungkus menjadi array
+        if (is_string($answerData)) {
+            $answerData = ['jawaban' => $answerData];
+        } elseif (!is_array($answerData)) {
+            $answerData = ['jawaban' => (string) $answerData];
+        }
 
-        // Parse question_data jika masih string
-        $questionData = $question->question_data;
+        $question = Soal::with('materi')->findOrFail($questionId);
+
+        // Validasi Kepemilikan Materi (Mencegah IDOR antar sekolah)
+        $material = $question->materi;
+        if ($material) {
+            $isAllowed = false;
+            if (empty($material->asal_sekolah) || strtolower($material->asal_sekolah) === 'global') {
+                $isAllowed = true;
+            } elseif ($material->asal_sekolah === $user->asal_sekolah) {
+                $isAllowed = true;
+            } elseif ($material->kode_bahasa === 'global' || $material->kode_bahasa === $user->kode_bahasa) {
+                // Sesuai dengan filter di getQuestions
+                $isAllowed = true;
+            }
+            
+            if (!$isAllowed) {
+                abort(403, 'Akses ditolak: Soal ini bukan untuk wilayah Anda.');
+            }
+        }
+
+        // Parse data_soal jika masih string
+        $questionData = $question->data_soal;
         if (is_string($questionData)) {
             $questionData = json_decode($questionData, true) ?? [];
         }
+        if ($questionData === null) {
+            $questionData = [];
+        }
 
         // Validasi jawaban berdasarkan template
-        $isCorrect    = $this->validateAnswer($question->template_type, $questionData, $answerData);
+        $isCorrect    = $this->validateAnswer($question->tipe_template, $questionData, $answerData);
         $pointsEarned = $isCorrect ? ($question->points ?? 10) : 0;
 
         // Upsert progress (satu siswa, satu soal, satu record)
-        $progress = StudentProgress::updateOrCreate(
+        $progress = ProgresSiswa::updateOrCreate(
             [
-                'user_id'     => $user->id,
-                'question_id' => $questionId,
+                'pengguna_id'     => $user->id,
+                'soal_id' => $questionId,
             ],
             [
-                'answer_data'  => json_encode($answerData),
-                'is_correct'   => $isCorrect,
-                'points_earned'=> $pointsEarned,
-                'time_spent_seconds' => $timeSpent,
-                'answered_at'  => now(),
+                'data_jawaban'  => json_encode($answerData),
+                'benar'   => $isCorrect,
+                'poin_diperoleh'=> $pointsEarned,
+                'waktu_detik' => $timeSpent,
+                'dijawab_pada'  => now(),
             ]
         );
 
         return [
             'question_id'   => $questionId,
-            'template_type' => $question->template_type,
+            'template_type' => $question->tipe_template,
             'is_correct'    => $isCorrect,
             'points_earned' => $pointsEarned,
-            'correct_answer'=> $this->getCorrectAnswerHint($question->template_type, $questionData),
+            'correct_answer'=> $this->getCorrectAnswerHint($question->tipe_template, $questionData),
             'progress_id'   => $progress->id,
         ];
     }
@@ -587,9 +681,13 @@ class SyncController extends Controller
      */
     private function validateAnswer(
         string $templateType,
-        array $questionData,
-        array $answerData
+        ?array $questionData,
+        mixed $answerData
     ): bool {
+        $questionData = $questionData ?? [];
+        if (!is_array($answerData)) {
+            $answerData = ['jawaban' => $answerData];
+        }
         return match($templateType) {
 
             // ── Multiple Choice ────────────────────────────────────────
@@ -704,7 +802,7 @@ class SyncController extends Controller
 
             // Normalisasi: lowercase + trim
             $normalizedCorrect = strtolower(trim((string) $correct));
-            $normalizedUser    = strtolower(trim((string) $userAnswer));
+            $normalizedPengguna    = strtolower(trim((string) $userAnswer));
 
             if ($normalizedCorrect !== $normalizedUser) {
                 return false;
@@ -719,8 +817,9 @@ class SyncController extends Controller
      * setelah siswa menjawab (baik benar maupun salah).
      * TIDAK mengirim jawaban lengkap sebelum siswa menjawab.
      */
-    private function getCorrectAnswerHint(string $templateType, array $questionData): mixed
+    private function getCorrectAnswerHint(string $templateType, ?array $questionData): mixed
     {
+        $questionData = $questionData ?? [];
         return match($templateType) {
             'multiple_choice', 'image_quiz'
                 => $questionData['correct_answer'] ?? null,
@@ -759,10 +858,10 @@ class SyncController extends Controller
 
         // Ambil semua aset yang cocok dari database dalam 1 query
         // Lebih efisien daripada query per file
-        $assets = AssetLibrary::whereIn('filename', $filenames)
-            ->where('is_active', true)
+        $assets = PustakaAset::whereIn('nama_file', $filenames)
+            ->where('aktif', true)
             ->get()
-            ->keyBy('filename'); // index by filename untuk O(1) lookup
+            ->keyBy('nama_file'); // index by filename untuk O(1) lookup
 
         $result = [];
 
@@ -776,11 +875,11 @@ class SyncController extends Controller
 
                 if ($fileExists) {
                     $result[] = [
-                        'filename'   => $filename,
-                        'url'        => route('assets.serve', ['hash' => $filename]),
-                        'mime_type'  => $asset->mime_type ?? $this->guessMimeType($filename),
-                        'file_size'  => $asset->file_size ?? 0,
-                        'asset_type' => $asset->asset_type ?? 'unknown',
+                        'nama_file'  => $filename,
+                        'url'        => '/storage/quiz-assets/' . $filename,
+                        'mime_type'  => $asset->tipe_mime ?? $this->guessMimeType($filename),
+                        'file_size'  => $asset->ukuran_file ?? 0,
+                        'asset_type' => $asset->tipe_aset ?? 'unknown',
                         'tags'       => $asset->tags ?? [],
                         'status'     => 'available',
                         // Cache hint untuk Flutter: file tidak akan berubah
@@ -791,16 +890,16 @@ class SyncController extends Controller
                     // File ada di DB tapi tidak ada di disk
                     // Tandai sebagai missing dan log untuk investigasi
                     Log::warning('[SyncController@resolveAssetUrls] File di DB tapi tidak ada di disk', [
-                        'filename' => $filename,
+                        'nama_file' => $filename,
                         'asset_id' => $asset->id,
                     ]);
 
                     $result[] = [
-                        'filename'   => $filename,
+                        'nama_file'   => $filename,
                         'url'        => null,
                         'mime_type'  => null,
                         'file_size'  => 0,
-                        'asset_type' => $asset->asset_type ?? 'unknown',
+                        'asset_type' => $asset->tipe_aset ?? 'unknown',
                         'tags'       => [],
                         'status'     => 'missing',
                         'cache_hint' => null,
@@ -809,7 +908,7 @@ class SyncController extends Controller
             } else {
                 // File tidak ada di database sama sekali
                 $result[] = [
-                    'filename'   => $filename,
+                    'nama_file'   => $filename,
                     'url'        => null,
                     'mime_type'  => null,
                     'file_size'  => 0,
@@ -859,3 +958,4 @@ class SyncController extends Controller
         };
     }
 }
+

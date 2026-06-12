@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Register Administrator - NusaLearn</title>
+    <title>Register Guru - NusaLearn</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -138,12 +138,12 @@
         <div class="brand">
             <div class="brand-icon"><i class="fa-solid fa-user-plus"></i></div>
             <h1>Nusa<span>Learn</span></h1>
-            <p>Registrasi Panel Administrator</p>
+            <p>Registrasi Panel Guru</p>
         </div>
 
         <div class="card">
-            <p class="card-heading">Buat Akun Admin Baru 🔐</p>
-            <p class="card-sub">Isi semua kolom di bawah untuk mendaftar sebagai administrator.</p>
+            <p class="card-heading">Buat Akun Guru Baru 🔐</p>
+            <p class="card-sub">Isi semua kolom di bawah untuk mendaftar sebagai guru.</p>
 
             @if ($errors->any())
             <div class="alert-error">
@@ -162,53 +162,58 @@
             <form method="POST" action="{{ route('admin.register.post') }}">
                 @csrf
 
-                {{-- Access Code --}}
-                <div class="access-box">
-                    <div class="access-box-label">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        Kode Akses Pendaftaran <span style="color:#F43F5E">*</span>
-                    </div>
-                    <div style="position:relative">
-                        <i class="fa-solid fa-shield-halved" style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#A78BFA;font-size:14px;pointer-events:none"></i>
-                        <input style="width:100%;background:#fff;border:2px solid var(--purple);border-radius:12px;padding:12px 16px 12px 42px;font-size:13px;font-weight:700;font-family:'Outfit',monospace;color:var(--black);letter-spacing:3px;text-transform:uppercase;outline:none;transition:box-shadow .2s" 
-                               type="text" name="access_code" id="access_code" required placeholder="MASUKKAN TOKEN AKSES"
-                               onfocus="this.style.boxShadow='3px 3px 0 var(--purple-dark)'" 
-                               onblur="this.style.boxShadow='none'">
-                    </div>
-                    <p class="access-note"><i class="fa-solid fa-circle-info"></i> Registrasi ini terbatas. Masukkan kode akses institusi yang valid.</p>
-                </div>
+                {{-- Access Code has been moved to Login --}}
 
                 {{-- Identitas --}}
-                <div class="section-title"><i class="fa-solid fa-id-card" style="color:var(--purple)"></i> Identitas Administrator</div>
+                <div class="section-title"><i class="fa-solid fa-id-card" style="color:var(--purple)"></i> Identitas Guru</div>
                 <div class="form-grid" style="margin-bottom:14px">
                     <div class="field-group">
                         <label class="field-label">Nama Lengkap</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-id-card input-icon"></i>
-                            <input class="field-input" type="text" name="name" value="{{ old('name') }}" required autofocus placeholder="Contoh: Budi Santoso">
+                            <input class="field-input" type="text" name="nama" value="{{ old('nama') }}" required autofocus placeholder="Contoh: Budi Santoso">
                         </div>
                     </div>
                     <div class="field-group">
                         <label class="field-label">Username Akses</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-user-shield input-icon"></i>
-                            <input class="field-input" type="text" name="username" value="{{ old('username') }}" required placeholder="Contoh: admin_smk1">
+                            <input class="field-input" type="text" name="nama_pengguna" value="{{ old('nama_pengguna') }}" required placeholder="Contoh: guru_smk1">
                         </div>
                     </div>
                     <div class="field-group">
-                        <label class="field-label">Asal Sekolah / Instansi</label>
+                        <label class="field-label">Asal Sekolah</label>
                         <div class="input-wrap">
-                            <i class="fa-solid fa-school input-icon"></i>
-                            <input class="field-input" type="text" name="school_origin" value="{{ old('school_origin') }}" required placeholder="Contoh: SMKN 1 Kendari">
+                            <i class="fa-solid fa-school input-icon" style="z-index: 10;"></i>
+                            <select class="field-input" name="asal_sekolah" required style="cursor: pointer; appearance: none;">
+                                <option value="" disabled {{ old('asal_sekolah') ? '' : 'selected' }}>Pilih Sekolah Asal...</option>
+                                @foreach($schools ?? [] as $school)
+                                    <option value="{{ $school->nama }}" {{ old('asal_sekolah') == $school->nama ? 'selected' : '' }}>
+                                        {{ $school->nama }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            <i class="fa-solid fa-chevron-down" style="position: absolute; right: 16px; top: 50%; transform: translateY(-50%); color: #A78BFA; pointer-events: none; font-size: 13px;"></i>
                         </div>
                     </div>
                     <div class="field-group">
                         <label class="field-label">Alamat Email Valid</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-envelope input-icon"></i>
-                            <input class="field-input" type="email" name="email" value="{{ old('email') }}" required placeholder="admin@sekolah.sch.id">
+                            <input class="field-input" type="email" name="email" value="{{ old('email') }}" required placeholder="guru@sekolah.sch.id">
                         </div>
                     </div>
+                </div>
+                                {{-- Kelas yang Diampu --}}
+                <div class="section-title"><i class="fa-solid fa-chalkboard-user" style="color:var(--purple)"></i> Kelas yang Diampu</div>
+                <div class="warn-box" style="background:#F5F3FF; border-color:#8B5CF6; color:#4C1D95;"><i class="fa-solid fa-info-circle"></i> Anda dapat memilih lebih dari satu kelas.</div>
+                <div class="form-grid" style="grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px;">
+                    @for($i = 1; $i <= 3; $i++)
+                    <label style="display:flex; align-items:center; gap:8px; background:var(--gray-soft); border:2px solid #E5E7EB; border-radius:10px; padding:10px; cursor:pointer;">
+                        <input type="checkbox" name="kelas[]" value="{{ $i }}" style="accent-color: var(--purple); width:16px; height:16px;">
+                        <span style="font-size:13px; font-weight:700; color:var(--black)">Kelas {{ $i }}</span>
+                    </label>
+                    @endfor
                 </div>
 
                 {{-- Password --}}
@@ -220,16 +225,16 @@
                         <label class="field-label">Kata Sandi Baru</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-key input-icon"></i>
-                            <input class="field-input" id="password" type="password" name="password" required placeholder="••••••••" style="padding-right:42px">
-                            <button type="button" class="toggle-pw" onclick="togglePassword('password','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
+                            <input class="field-input" id="kata_sandi" type="password" name="kata_sandi" required placeholder="••••••••" style="padding-right:42px">
+                            <button type="button" class="toggle-pw" onclick="togglePassword('kata_sandi','eye-p')"><i id="eye-p" class="fa-regular fa-eye"></i></button>
                         </div>
                     </div>
                     <div class="field-group">
                         <label class="field-label">Konfirmasi Kata Sandi</label>
                         <div class="input-wrap">
                             <i class="fa-solid fa-lock input-icon"></i>
-                            <input class="field-input" id="password_confirmation" type="password" name="password_confirmation" required placeholder="••••••••" style="padding-right:42px">
-                            <button type="button" class="toggle-pw" onclick="togglePassword('password_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
+                            <input class="field-input" id="kata_sandi_confirmation" type="password" name="kata_sandi_confirmation" required placeholder="••••••••" style="padding-right:42px">
+                            <button type="button" class="toggle-pw" onclick="togglePassword('kata_sandi_confirmation','eye-c')"><i id="eye-c" class="fa-regular fa-eye"></i></button>
                         </div>
                     </div>
                 </div>
@@ -262,5 +267,30 @@
             setTimeout(() => { pre.style.visibility = 'hidden'; }, 600);
         });
     </script>
+<!-- SweetAlert2 Neo-Brutalism -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+    const neoSwal = Swal.mixin({
+        customClass: {
+            popup: 'border-2 border-black rounded-2xl shadow-neo-lg bg-white text-black',
+            title: 'font-black uppercase tracking-tight text-xl',
+            confirmButton: 'bg-neo-green border-2 border-black text-black font-black uppercase rounded-lg px-6 py-2 shadow-neo-sm hover:-translate-y-1 hover:shadow-neo transition-all',
+            htmlContainer: 'font-bold text-sm text-gray-700'
+        },
+        buttonsStyling: false
+    });
+
+    window.showCustomAlert = function(msg) {
+        neoSwal.fire({ icon: 'warning', title: 'Perhatian!', text: msg });
+    };
+
+    @if(session('success'))
+        neoSwal.fire({ icon: 'success', title: 'Berhasil!', text: '{{ session("success") }}' });
+    @endif
+
+    @if($errors->any())
+        neoSwal.fire({ icon: 'error', title: 'Oops...', text: '{{ $errors->first() }}' });
+    @endif
+</script>
 </body>
 </html>
